@@ -51,28 +51,32 @@ export async function generateFluxImage(
     input.aspect_ratio = replicateAspectRatio;
   }
 
-  // Create prediction via proxy
+  console.log("Creating Replicate prediction...");
   let prediction = await proxyFetch('/predictions', { version, input }, apiKey);
 
   if (prediction.error) {
     throw new Error(`Replicate Error: ${prediction.error}`);
   }
 
+  console.log("Prediction created:", prediction.id, "Status:", prediction.status);
   const predictionId = prediction.id;
 
-  // Poll until complete
-  const maxTime = 120000;
+  // Poll until complete - 5 minutes max
+  const maxTime = 300000;
   const startTime = Date.now();
+  let pollCount = 0;
   
   while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
     if (Date.now() - startTime > maxTime) {
-      throw new Error("Replicate generation timed out after 120s.");
+      throw new Error("Replicate generation timed out after 5 minutes.");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    pollCount++;
 
-    // Poll via GET
     prediction = await proxyFetch(`/predictions/${predictionId}`, {}, apiKey, 'GET');
+    console.log(`Poll #${pollCount} (${elapsed}s): ${prediction.status}`);
   }
 
   if (prediction.status === "failed") {
@@ -90,5 +94,6 @@ export async function generateFluxImage(
     throw new Error("No image URL in Replicate response output.");
   }
 
+  console.log("Generation complete!");
   return url;
 }
