@@ -8,23 +8,15 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
     [AspectRatio.PORTRAIT]: "9:16",
 };
 
-async function proxyFetch(path: string, body: any, apiKey: string) {
+async function proxyFetch(path: string, body: any, apiKey: string, method: string = 'POST') {
     const response = await fetch('/api/replicate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, body, apiKey }),
+        body: JSON.stringify({ path, body, apiKey, method }),
     });
     return response.json();
 }
-// src/services/replicateFluxService.ts
-async function proxyFetch(path: string, body: any, apiKey: string, method: string = 'POST') {
-  const response = await fetch('/api/replicate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, body, apiKey, method }),
-  });
-  return response.json();
-}
+
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
@@ -39,7 +31,7 @@ export async function generateFluxImage(
 
     const isImg2Img = !!initImage;
     const version = isImg2Img
-    ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
+    ? "8bb04ca03d368e597c554a938c4b2b1a8d294d13e9a597a731b9"
     : modelVersion;
 
     const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
@@ -60,7 +52,7 @@ export async function generateFluxImage(
     }
 
     // Create prediction via proxy
-    let prediction = await proxyFetch('/predictions', { version, input }, apiKey);
+    let prediction = await proxyFetch('/predictions', { version, input }, apiKey, 'POST');
 
     if (prediction.error) {
         throw new Error(`Replicate Error: ${prediction.error}`);
