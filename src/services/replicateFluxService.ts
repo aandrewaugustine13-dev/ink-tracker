@@ -8,51 +8,63 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
     [AspectRatio.PORTRAIT]: "9:16",
 };
 
-async function proxyFetch(path: string, body: any, apiKey: string, method: string = 'POST') {
+async function callReplicateAPI<T>(
+    endpoint: string,
+    data?: any,
+    method: string = 'POST'
+): Promise<T> {
     const response = await fetch('/api/replicate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, body, apiKey, method }),
+        body: JSON.stringify({
+            path: endpoint,
+            body: data,
+            method
+        }),
     });
-    return response.json();
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new Error(result.error || `API request failed`);
+    }
+
+    return result;
 }
 
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
-    apiKey: string,
-    modelVersion: string = "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1",
     initImage?: string,
     strength: number = 0.7
 ): Promise<string> {
-    if (!apiKey?.trim()) {
-        throw new Error("Replicate API key is missing.");
-    }
-
     const isImg2Img = !!initImage;
     const version = isImg2Img
-    ? "8bb04ca03d368e597c554a938c4b2b1a8d294d13e9a597a731b9"
-    : modelVersion;
+    ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
+    : "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1";
 
     const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
 
     const input: any = {
-        prompt,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+        prompt: prompt.trim(),
         num_outputs: 1,
-        output_format: "png"
+        output_format: "png",
+        guidance_scale: 3.5,
+        num_inference_steps: 28,
     };
 
     if (isImg2Img && initImage) {
         input.image = initImage;
-        input.prompt_strength = strength;
+        input.prompt_strength = Math.max(0.1, Math.min(1, strength));
     } else {
         input.aspect_ratio = replicateAspectRatio;
     }
 
-    // Create prediction via proxy
-    let prediction = await proxyFetch('/predictions', { version, input }, apiKey, 'POST');
+    // 1. Create prediction
+    const prediction = await callReplicateAPI('/predictions', {
+        version,
+        input
+    });
 
     if (prediction.error) {
         throw new Error(`Replicate Error: ${prediction.error}`);
@@ -60,45 +72,35 @@ export async function generateFluxImage(
 
     const predictionId = prediction.id;
 
-    // Poll until complete
-    const maxTime = 120000;
+    // 2. Poll for completion
+    const pollInterval = 2000;
+    const maxPollTime = 180000;
+
     const startTime = Date.now();
 
-    while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
-        if (Date.now() - startTime > maxTime) {
-            throw new Error("Replicate generation timed out after 120s.");
+    while (Date.now() - startTime < maxPollTime) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+        const statusCheck = await callReplicateAPI(
+            `/predictions/${predictionId}`,
+            undefined,
+            'GET'
+        );
+
+        if (statusCheck.status === 'succeeded') {
+            const output = statusCheck.output;
+            const imageUrl = Array.isArray(output) ? output[0] : output;
+
+            if (!imageUrl || typeof imageUrl !== 'string') {
+                throw new Error('Invalid image URL in response');
+            }
+
+            return imageUrl;
+        } else if (statusCheck.status === 'failed' || statusCheck.status === 'canceled') {
+            const errorMsg = statusCheck.error || 'Unknown error';
+            throw new Error(`Generation ${statusCheck.status}: ${errorMsg}`);
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        // Poll via direct GET (no body needed, less likely to have CORS issues)
-        const pollResponse = await fetch(`/api/replicate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                path: `/predictions/${predictionId}`,
-                body: {},
-                apiKey,
-                method: 'GET'
-            }),
-        });
-        prediction = await pollResponse.json();
     }
 
-    if (prediction.status === "failed") {
-        throw new Error(`Replicate Generation Failed: ${prediction.error || "Unknown Error"}`);
-    }
-
-    if (prediction.status === "canceled") {
-        throw new Error("Replicate Generation Canceled.");
-    }
-
-    const output = prediction.output;
-    const url = Array.isArray(output) ? output[0] : output;
-
-    if (!url) {
-        throw new Error("No image URL in Replicate response output.");
-    }
-
-    return url;
+    throw new Error('Generation timed out');
 }
