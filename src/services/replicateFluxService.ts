@@ -16,7 +16,15 @@ async function proxyFetch(path: string, body: any, apiKey: string) {
     });
     return response.json();
 }
-
+// src/services/replicateFluxService.ts
+async function proxyFetch(path: string, body: any, apiKey: string, method: string = 'POST') {
+  const response = await fetch('/api/replicate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, body, apiKey, method }),
+  });
+  return response.json();
+}
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
