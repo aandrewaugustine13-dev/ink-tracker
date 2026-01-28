@@ -8,11 +8,11 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
     [AspectRatio.PORTRAIT]: "9:16",
 };
 
-async function proxyFetch(path: string, body: any, apiKey: string, method: string = 'POST') {
+async function proxyFetch(path: string, body: any, method: string = 'POST') {
     const response = await fetch('/api/replicate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, body, apiKey, method }),
+        body: JSON.stringify({ path, body, method }),
     });
     return response.json();
 }
@@ -20,15 +20,10 @@ async function proxyFetch(path: string, body: any, apiKey: string, method: strin
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
-    apiKey: string,
     modelVersion: string = "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1",
     initImage?: string,
     strength: number = 0.7
 ): Promise<string> {
-    if (!apiKey?.trim()) {
-        throw new Error("Replicate API key is missing.");
-    }
-
     const isImg2Img = !!initImage;
     const version = isImg2Img
     ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
@@ -51,7 +46,7 @@ export async function generateFluxImage(
         input.aspect_ratio = replicateAspectRatio;
     }
 
-    let prediction = await proxyFetch('/predictions', { version, input }, apiKey, 'POST');
+    let prediction = await proxyFetch('/predictions', { version, input });
 
     if (prediction.error) {
         throw new Error(`Replicate Error: ${prediction.error}`);
@@ -67,8 +62,7 @@ export async function generateFluxImage(
         }
 
         await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        prediction = await proxyFetch(`/predictions/${predictionId}`, {}, apiKey, 'GET');
+        prediction = await proxyFetch(`/predictions/${predictionId}`, {});
     }
 
     if (prediction.status === "failed") {
