@@ -48,6 +48,8 @@ const PanelCard: React.FC<PanelCardProps> = ({
     const [loading, setLoading] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editPrompt, setEditPrompt] = useState('');
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [tempTitle, setTempTitle] = useState('');
     const config = ASPECT_CONFIGS[panel.aspectRatio];
 
     const resolvedImageUrl = useIndexedDBImage(panel.imageUrl);
@@ -133,24 +135,96 @@ const PanelCard: React.FC<PanelCardProps> = ({
         dispatch({ type: 'ADD_TEXT_ELEMENT', panelId: panel.id, element });
     };
 
+    const handleTitleSave = () => {
+        if (tempTitle.trim() === '') {
+            // If empty, remove the title to show default
+            dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { title: undefined } });
+        } else {
+            dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { title: tempTitle } });
+        }
+        setEditingTitle(false);
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleTitleSave();
+        } else if (e.key === 'Escape') {
+            setEditingTitle(false);
+        }
+    };
+
+    const getDisplayTitle = () => {
+        return panel.title?.trim() || `FRAME ${index + 1}`;
+    };
+
     return (
         <div
         ref={setNodeRef}
         style={isOverlay ? undefined : style}
         className={`bg-ink-800 border border-ink-700 rounded-xl overflow-hidden group flex flex-col h-full min-h-0 animate-fade-in relative transition-all ${isOverlay ? 'scale-[1.05] shadow-2xl ring-2 ring-ember-500 z-[1000]' : ''} ${showGutters ? 'p-4 bg-white ring-8 ring-white shadow-[10px_10px_20px_rgba(0,0,0,0.5)] border-4 border-black' : ''}`}
         >
+        {/* DRAG HANDLE & HEADER - IMPROVED VERSION */}
+        <div className={`relative flex items-center justify-between bg-ink-900/50 border-b border-ink-700 select-none flex-shrink-0 ${showGutters ? 'bg-gray-100 border-b-2 border-black -mt-4 -mx-4 px-4' : ''}`}>
+        {/* Left side: Visual Drag Grip + Label */}
+        <div className="flex-1 flex items-center gap-3 px-4 py-3">
+        {/* Improved Drag Grip - Clearer and only here activates drag */}
         <div
         {...attributes}
         {...listeners}
-        className={`relative flex items-center justify-between bg-ink-900/50 border-b border-ink-700 cursor-grab active:cursor-grabbing select-none flex-shrink-0 ${showGutters ? 'bg-gray-100 border-b-2 border-black -mt-4 -mx-4 px-4' : ''}`}
+        className={`flex items-center p-1 rounded cursor-grab active:cursor-grabbing transition-colors ${showGutters ? 'text-black hover:bg-gray-300' : 'text-steel-500 hover:text-ember-500 hover:bg-ink-700'}`}
+        title="Drag to reorder"
         >
-        <div className="flex-1 flex items-center gap-3 px-4 py-3">
-        <div className={`${showGutters ? 'text-black' : 'text-steel-600 group-hover:text-ember-500'} transition-colors flex items-center gap-2`}>
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
-        {panel.referencePanelId && <span title="Linked to previous panel" className="text-ember-500 animate-pulse"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" /><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" /></svg></span>}
+        {/* Grip icon (nine-dot grid) */}
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+        <circle cx="8" cy="6" r="1.2"/>
+        <circle cx="12" cy="6" r="1.2"/>
+        <circle cx="16" cy="6" r="1.2"/>
+        <circle cx="8" cy="12" r="1.2"/>
+        <circle cx="12" cy="12" r="1.2"/>
+        <circle cx="16" cy="12" r="1.2"/>
+        <circle cx="8" cy="18" r="1.2"/>
+        <circle cx="12" cy="18" r="1.2"/>
+        <circle cx="16" cy="18" r="1.2"/>
+        </svg>
         </div>
-        <span className={`font-display text-xl tracking-wider whitespace-nowrap ${showGutters ? 'text-black' : 'text-ember-500'}`}>FRAME {index + 1}</span>
+        {panel.referencePanelId && (
+            <span title="Linked to previous panel" className="text-ember-500 animate-pulse">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+            </svg>
+            </span>
+        )}
+
+        {/* Editable Title - Click to Edit */}
+        {editingTitle ? (
+            <input
+            type="text"
+            value={tempTitle}
+            onChange={(e) => setTempTitle(e.target.value)}
+            onBlur={handleTitleSave}
+            onKeyDown={handleTitleKeyDown}
+            className={`font-display text-xl tracking-wider bg-transparent border-b border-ember-500 outline-none px-1 ${showGutters ? 'text-black' : 'text-ember-500'}`}
+            autoFocus
+            placeholder={`FRAME ${index + 1}`}
+            />
+        ) : (
+            <span
+            className={`font-display text-xl tracking-wider whitespace-nowrap cursor-pointer hover:text-ember-400 transition-colors ${showGutters ? 'text-black hover:text-gray-800' : 'text-ember-500'}`}
+            onClick={() => {
+                setTempTitle(panel.title || '');
+                setEditingTitle(true);
+            }}
+            title="Click to edit title"
+            >
+            {getDisplayTitle()}
+            <span className="inline-block ml-2 text-xs text-steel-500 opacity-0 group-hover:opacity-100 transition-opacity">
+            ✏️
+            </span>
+            </span>
+        )}
         </div>
+        {/* Right side: Buttons (unchanged) */}
         <div className="flex items-center gap-2 pr-4 pointer-events-auto">
         <button
         onClick={(e) => {
@@ -178,6 +252,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
         </div>
         </div>
 
+        {/* Image container with object-contain to prevent cropping */}
         <div className={`relative ${config.class} bg-ink-950 flex items-center justify-center overflow-hidden border-b border-ink-700 group/canvas pointer-events-auto flex-shrink-0 w-full h-auto ${showGutters ? 'border-b-2 border-black' : ''}`}>
         {loading && (
             <div className="absolute inset-0 z-[250] bg-ink-950/90 backdrop-blur flex flex-col items-center justify-center text-ember-500 gap-3 text-center p-4">
@@ -186,7 +261,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
         )}
         {resolvedImageUrl ? (
             <>
-            <img src={resolvedImageUrl} className="w-full h-full object-cover pointer-events-none" alt="" />
+            <img src={resolvedImageUrl} className="w-full h-full object-contain pointer-events-none bg-ink-900" alt="" />
             {panel.textElements.map(te => <TextOverlay key={te.id} element={te} panelId={panel.id} dispatch={dispatch} />)}
             </>
         ) : (

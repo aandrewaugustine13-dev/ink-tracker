@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AppState, Project, Character } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
+import { generateFluxImage as generateReplicateFlux } from '../services/replicateFluxService';
+import { saveImage } from '../services/imageStorage';
 
 interface SidebarProps {
     state: AppState;
@@ -12,6 +14,8 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOpenScriptImport }) => {
     const activeProject = state.projects.find(p => p.id === state.activeProjectId);
+    const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
+    const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
     const typeLabel = activeProject?.issueType === 'issue' ? 'Issue' : 'Chapter';
 
     const STYLE_GROUPS = {
@@ -23,11 +27,14 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     };
 
     const [sidebarKey, setSidebarKey] = useState('');
+
     useEffect(() => {
         if (activeProject?.imageProvider === 'fal-flux') {
             setSidebarKey(activeProject?.falApiKey || '');
         } else if (activeProject?.imageProvider === 'replicate-flux') {
             setSidebarKey(activeProject?.replicateApiKey || '');
+        } else {
+            setSidebarKey('');
         }
     }, [activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.imageProvider]);
 
@@ -41,6 +48,60 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             setCharName('');
             setCharDesc('');
             setShowCharForm(false);
+        }
+    };
+
+    // Generate only when Replicate Flux is selected
+    const handleReplicateFluxClick = async () => {
+        // If not selected, just switch provider (original behavior)
+        if (activeProject?.imageProvider !== 'replicate-flux') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'replicate-flux' } });
+            return;
+        }
+
+        // Generation logic
+        if (!activeProject?.replicateApiKey) {
+            alert("Replicate API key is missing. Enter it above and SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        // Use first panel for now (simple and reliable)
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateReplicateFlux(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.replicateApiKey,
+                activeProject.replicateModel || '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1',
+                undefined, // initImage if needed later
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Flux");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Flux image generated and saved:", generatedUrl);
+        } catch (err: any) {
+            console.error("Replicate Flux generation failed:", err);
+            alert(`Flux generation failed: ${err.message || 'Check console for details'}`);
         }
     };
 
@@ -71,6 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </button>
         </div>
         </div>
+
         <div className="p-3 bg-ink-800 rounded border border-ink-700 shadow-inner flex flex-col gap-2">
         <p className="font-display text-lg text-steel-200 tracking-wide truncate">{activeProject?.title}</p>
         <button
@@ -79,6 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         >
         📜 Import Script
         </button>
+
         <div className="flex flex-col gap-1 mt-2">
         <div className="flex gap-1">
         <button
@@ -94,11 +157,17 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         FAL.AI
         </button>
         </div>
+
         <button
-        onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'replicate-flux' } })}
-        className={`w-full text-[8px] font-mono py-1 rounded transition-colors ${activeProject?.imageProvider === 'replicate-flux' ? 'bg-ember-500 text-ink-950 font-bold' : 'bg-ink-900 text-steel-600'}`}
+        onClick={handleReplicateFluxClick}
+        disabled={!activeProject?.replicateApiKey}
+        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
+            activeProject?.imageProvider === 'replicate-flux'
+            ? 'bg-purple-700 hover:bg-purple-600 text-white'
+            : 'bg-ink-800 text-steel-600 cursor-not-allowed'
+        } disabled:opacity-50`}
         >
-        REPLICATE FLUX
+        {activeProject?.imageProvider === 'replicate-flux' ? 'GENERATE FLUX' : 'REPLICATE FLUX'}
         </button>
         </div>
 
@@ -121,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                 if (sidebarKey.trim()) {
                     if (activeProject?.imageProvider === 'fal-flux') {
                         dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    } else {
+                    } else if (activeProject?.imageProvider === 'replicate-flux') {
                         dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                     }
                     alert('Key saved!');
@@ -137,18 +206,29 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </div>
         </div>
 
+        {/* Issues / Chapters section */}
         <div>
         <div className="flex items-center justify-between mb-3 px-1">
         <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">{typeLabel}s</h2>
         <button
-        onClick={() => activeProject && dispatch({ type: 'ADD_ISSUE', projectId: activeProject.id })}
+        onClick={() => {
+            if (!activeProject) {
+                alert("No active project found. Try creating or selecting a story first.");
+                console.log("Active project missing when adding issue:", state.activeProjectId, state.projects);
+                return;
+            }
+            console.log("Dispatching ADD_ISSUE for project:", activeProject.id, activeProject.title);
+            dispatch({ type: 'ADD_ISSUE', projectId: activeProject.id });
+        }}
         className="text-steel-400 hover:text-ember-500 transition-colors flex items-center gap-1 group"
+        title="Add New Issue/Chapter"
         >
         <Icons.Plus />
         <span className="text-[9px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">NEW</span>
         </button>
         </div>
 
+        {/* Issues list - unchanged from your original */}
         <div className="space-y-4">
         {activeProject?.issues.map(iss => {
             const isActive = state.activeIssueId === iss.id;
@@ -165,14 +245,13 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                 <div className="flex items-center gap-1">
                 <span className="text-[9px] font-mono text-steel-600">{iss.pages.length}P</span>
                 <button
-                onClick={(e) => { e.stopPropagation(); if(confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
+                onClick={(e) => { e.stopPropagation(); if (confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
                 className="opacity-0 group-hover:opacity-100 p-1 text-steel-700 hover:text-red-500 transition-all"
                 >
                 <Icons.Trash />
                 </button>
                 </div>
                 </div>
-
                 {isActive && (
                     <div className="px-2 py-2 border-t border-ember-500/10 space-y-1 animate-fade-in">
                     {iss.pages.map(pg => (
@@ -180,9 +259,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                         key={pg.id}
                         onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
                         className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
-                            state.activePageId === pg.id
-                            ? 'bg-ember-500 text-ink-950 font-bold'
-                            : 'text-steel-500 hover:bg-ink-700'
+                            state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
                         }`}
                         >
                         <span>PAGE {pg.number}</span>
@@ -203,6 +280,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </div>
         </div>
 
+        {/* Cast section - unchanged */}
         <div>
         <div className="flex items-center justify-between mb-3 px-1">
         <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Cast</h2>
@@ -269,6 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </div>
         </div>
 
+        {/* Art Style selector - unchanged */}
         <div className="p-6 border-t border-ink-700 bg-ink-950 space-y-3">
         <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest px-1">Art Style</h2>
         <select

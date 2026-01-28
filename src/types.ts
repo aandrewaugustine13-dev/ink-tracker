@@ -44,6 +44,7 @@ export interface Panel {
     textElements: TextElement[];
     referencePanelId?: string;          // ID of another panel whose image to use as img2img init
     referenceStrength?: number;         // 0–1, how strongly to follow the reference
+    title?: string;
 }
 
 export interface Page {
