@@ -20,13 +20,15 @@ async function callReplicateAPI(path: string, body: any = {}, method: string = '
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
+    apiKey?: string,  // Keep parameter for compatibility
+    modelVersion: string = "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1",
     initImage?: string,
     strength: number = 0.7
 ): Promise<string> {
     const isImg2Img = !!initImage;
     const version = isImg2Img
         ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
-        : "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1";
+        : modelVersion;
 
     const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
 
@@ -45,7 +47,6 @@ export async function generateFluxImage(
         input.aspect_ratio = replicateAspectRatio;
     }
 
-    // Create prediction
     const prediction = await callReplicateAPI('/predictions', {
         version,
         input
