@@ -15,8 +15,11 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.38.0",
     "jszip": "^3.10.1",
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-redux": "^9.2.0",
+    "react-resizable-panels": "^4.5.5",
     "react-zoom-pan-pinch": "^3.7.0"
   },
   "devDependencies": {
