@@ -1,206 +1,76 @@
 import { AspectRatio } from "../types";
 
-const ASPECT_RATIO_MAP: Record<string, string> = {
-    [AspectRatio.WIDE]: "16:9",
-    [AspectRatio.STD]: "4:3",
-    [AspectRatio.SQUARE]: "1:1",
-    [AspectRatio.TALL]: "3:4",
-    [AspectRatio.PORTRAIT]: "9:16",
-};
-
-// Use a simpler model that's more reliable
-const FAL_MODELS = {
-    FLUX: "fal-ai/flux",
-    FLUX_DEV: "fal-ai/flux-dev", // More reliable, less busy
-    LIGHTNING: "fal-ai/stable-diffusion-lightning", // Faster, cheaper
-} as const;
-
-interface FalRequest {
-    request_id: string;
-    status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
-    response?: {
-        images: Array<{ url: string }>;
-    };
-    error?: string;
-}
-
-// Cache for rate limiting
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 3000; // 3 seconds between requests
-
-export async function generateFalImage(
+/**
+ * Generates an image using fal.ai's Flux models.
+ */
+export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
-    model: string = FAL_MODELS.FLUX_DEV
+    apiKey: string,
+    model: string = 'fal-ai/flux-pro',
+    initImage?: string,
+    strength: number = 0.7
 ): Promise<string> {
-    try {
-        // Rate limiting
-        const now = Date.now();
-        if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
-            await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL));
-        }
-        lastRequestTime = Date.now();
+    if (!apiKey?.trim()) {
+        throw new Error('fal.ai API key is missing or empty.');
+    }
 
-        console.log('🚀 Starting FAL generation with model:', model);
-        console.log('Prompt:', prompt.substring(0, 100));
-        
-        const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
-        
-        // Convert aspect ratio to FAL's format
-        let imageSize = "square_hd";
-        if (replicateAspectRatio === "16:9") imageSize = "landscape_4_3";
-        if (replicateAspectRatio === "9:16") imageSize = "portrait_9_16";
-        
-        // Step 1: Create generation request
-        const response = await fetch('/api/fal', {
+    const ratio = String(aspectRatio).toLowerCase();
+    let image_size: string = 'square_hd';
+
+    if (ratio === 'wide') image_size = 'landscape_16_9';
+    else if (ratio === 'std') image_size = 'landscape_4_3';
+    else if (ratio === 'tall') image_size = 'portrait_4_3';
+    else if (ratio === 'portrait') image_size = 'portrait_16_9';
+
+    const isImg2Img = !!initImage;
+    // Use specialized endpoint for i2i if needed, or stick to provided model
+    const endpoint = isImg2Img ? 'fal-ai/flux/dev/image-to-image' : model;
+
+    try {
+        const body: any = {
+            prompt,
+            num_images: 1,
+            enable_safety_checker: true,
+            sync_mode: true
+        };
+
+        if (isImg2Img && initImage) {
+            body.image_url = initImage;
+            body.strength = strength;
+        } else {
+            body.image_size = image_size;
+        }
+
+        const res = await fetch(`https://fal.run/${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: '/queue/flux',
-                data: {
-                    model_name: model,
-                    prompt: prompt.trim(),
-                    image_size: imageSize,
-                    num_inference_steps: 20, // Reduced for speed
-                    guidance_scale: 3.5,
-                    enable_safety_checker: false, // Disable for more reliability
-                    sync_mode: false
-                }
-            })
+            headers: {
+                'Authorization': `Key ${apiKey.trim()}`,
+                                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ FAL request failed:', response.status, errorText);
-            
-            // Check for specific errors
-            if (response.status === 429) {
-                throw new Error('Rate limited: Too many requests. Wait a few minutes.');
-            }
-            if (response.status === 402) {
-                throw new Error('Out of credits. Add more credits at fal.ai/dashboard.');
-            }
-            
-            throw new Error(`FAL API error (${response.status}): ${errorText.substring(0, 100)}`);
-        }
-
-        const data: FalRequest = await response.json();
-        console.log('📦 Request created:', data.request_id);
-        
-        if (!data.request_id) {
-            throw new Error('No request ID received from FAL');
-        }
-
-        const requestId = data.request_id;
-
-        // Step 2: Poll for completion
-        const maxAttempts = 40; // Increased for reliability
-        const pollInterval = 3000; // 3 seconds
-        
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            console.log(`⏳ Polling attempt ${attempt}/${maxAttempts}...`);
-            
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-            
+        if (!res.ok) {
+            const rawText = await res.text();
+            let msg = rawText;
             try {
-                const statusResponse = await fetch('/api/fal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: `/queue/${requestId}`,
-                        data: {}
-                    })
-                });
-
-                if (!statusResponse.ok) {
-                    console.warn(`⚠️ Poll ${attempt} failed:`, statusResponse.status);
-                    continue; // Try again
-                }
-
-                const statusData: FalRequest = await statusResponse.json();
-                console.log(`📊 Status: ${statusData.status}`);
-                
-                if (statusData.status === "COMPLETED") {
-                    if (statusData.response?.images?.[0]?.url) {
-                        const imageUrl = statusData.response.images[0].url;
-                        console.log('✅ Image generated:', imageUrl);
-                        return imageUrl;
-                    } else {
-                        throw new Error('No image URL in completed response');
-                    }
-                } else if (statusData.status === "FAILED") {
-                    throw new Error(`FAL generation failed: ${statusData.error || 'Unknown error'}`);
-                }
-                // Continue polling for IN_QUEUE or IN_PROGRESS
-                
-            } catch (pollError) {
-                console.warn(`⚠️ Poll ${attempt} error:`, pollError);
-                // Continue polling
-            }
+                const errJson = JSON.parse(rawText);
+                msg = errJson.detail || errJson.message || rawText;
+            } catch {}
+            throw new Error(`fal.ai error ${res.status}: ${msg}`);
         }
 
-        throw new Error('Generation timed out after 2 minutes');
-        
-    } catch (error) {
-        console.error('❌ FAL generation failed:', error);
-        
-        // Provide user-friendly error messages
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        
-        if (errorMsg.includes('credits') || errorMsg.includes('402')) {
-            throw new Error('Out of FAL credits. Add more at fal.ai/dashboard');
-        }
-        if (errorMsg.includes('rate') || errorMsg.includes('429')) {
-            throw new Error('Rate limited. Wait a few minutes before trying again.');
-        }
-        if (errorMsg.includes('timeout')) {
-            throw new Error('Generation took too long. Try a simpler prompt.');
-        }
-        
-        throw new Error(`FAL Error: ${errorMsg}`);
-    }
-}
+        const data = await res.json();
+        const url = data?.images?.[0]?.url;
 
-// Quick test function
-export async function testFalQuick(): Promise<boolean> {
-    try {
-        console.log('Testing FAL connection...');
-        const response = await fetch('/api/fal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: '/models',
-                data: {}
-            })
-        });
-        
-        const ok = response.ok;
-        console.log('FAL test result:', ok);
-        return ok;
-    } catch (error) {
-        console.error('FAL test error:', error);
-        return false;
-    }
-}
-
-// Get credit balance (if FAL provides this endpoint)
-export async function checkFalCredits(): Promise<number | null> {
-    try {
-        const response = await fetch('/api/fal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: '/billing/credits',
-                data: {}
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            return data.credits || null;
+        if (!url) {
+            throw new Error('No image URL returned from fal.ai response.');
         }
-        return null;
-    } catch {
-        return null;
+
+        return url;
+    } catch (error: any) {
+        console.error('fal.ai generation failed:', error);
+        throw error;
     }
 }

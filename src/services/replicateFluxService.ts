@@ -8,48 +8,40 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
     [AspectRatio.PORTRAIT]: "9:16",
 };
 
-async function callReplicateAPI(path: string, body: any = {}, method: string = 'POST') {
-    try {
-        const response = await fetch('/api/replicate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path, body, method }),
-        });
+async function callReplicateAPI<T>(
+    endpoint: string,
+    data?: any,
+    method: string = 'POST'
+): Promise<T> {
+    const response = await fetch('/api/replicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            path: endpoint,
+            body: data,
+            method
+        }),
+    });
 
-        // First, get the response as text to debug
-        const text = await response.text();
-        
-        if (!response.ok) {
-            console.error('API Error Response:', text);
-            throw new Error(`API request failed: ${response.status}`);
-        }
+    const result = await response.json();
 
-        // Try to parse JSON
-        try {
-            return JSON.parse(text);
-        } catch (jsonError) {
-            console.error('JSON Parse Error:', jsonError, 'Response text:', text);
-            throw new Error('Invalid JSON response from server');
-        }
-    } catch (error) {
-        console.error('Fetch error:', error);
-        throw error;
+    if (!response.ok) {
+        throw new Error(result.error || `API request failed`);
     }
+
+    return result;
 }
 
-// Keep the SAME signature your components expect (6 arguments)
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
-    apiKey: string,  // Keep for compatibility, but won't use it
-    modelVersion: string = "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1",
     initImage?: string,
     strength: number = 0.7
 ): Promise<string> {
     const isImg2Img = !!initImage;
     const version = isImg2Img
-        ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
-        : modelVersion;
+    ? "8bb04ca03d368e597c554a938c4b2b1a8d052d3a958e0a294d13e9a597a731b9"
+    : "776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1";
 
     const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
 
@@ -68,47 +60,47 @@ export async function generateFluxImage(
         input.aspect_ratio = replicateAspectRatio;
     }
 
-    console.log('Creating prediction with:', { version, input });
-
+    // 1. Create prediction
     const prediction = await callReplicateAPI('/predictions', {
         version,
         input
     });
-
-    console.log('Prediction created:', prediction);
 
     if (prediction.error) {
         throw new Error(`Replicate Error: ${prediction.error}`);
     }
 
     const predictionId = prediction.id;
+
+    // 2. Poll for completion
     const pollInterval = 2000;
     const maxPollTime = 180000;
+
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxPollTime) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
-        
+
         const statusCheck = await callReplicateAPI(
             `/predictions/${predictionId}`,
             undefined,
             'GET'
         );
 
-        console.log('Status check:', statusCheck);
-
         if (statusCheck.status === 'succeeded') {
             const output = statusCheck.output;
             const imageUrl = Array.isArray(output) ? output[0] : output;
-            
+
             if (!imageUrl || typeof imageUrl !== 'string') {
                 throw new Error('Invalid image URL in response');
             }
+
             return imageUrl;
         } else if (statusCheck.status === 'failed' || statusCheck.status === 'canceled') {
-            throw new Error(`Generation ${statusCheck.status}: ${statusCheck.error || 'Unknown error'}`);
+            const errorMsg = statusCheck.error || 'Unknown error';
+            throw new Error(`Generation ${statusCheck.status}: ${errorMsg}`);
         }
     }
 
-    throw new Error('Generation timed out after 3 minutes');
+    throw new Error('Generation timed out');
 }
