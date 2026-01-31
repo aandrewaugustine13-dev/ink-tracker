@@ -1,5 +1,12 @@
 import { AspectRatio } from "../types";
 
+interface ReplicatePrediction {
+    id: string;
+    status: 'starting' | 'processing' | 'succeeded' | 'failed' | 'canceled';
+    output?: string | string[];
+    error?: string;
+}
+
 const ASPECT_RATIO_MAP: Record<string, string> = {
     [AspectRatio.WIDE]: "16:9",
     [AspectRatio.STD]: "4:3",
@@ -10,7 +17,7 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
 
 async function callReplicateAPI<T>(
     endpoint: string,
-    data?: any,
+    data?: Record<string, unknown>,
     method: string = 'POST'
 ): Promise<T> {
     const response = await fetch('/api/replicate', {
@@ -22,19 +29,18 @@ async function callReplicateAPI<T>(
             method
         }),
     });
-
     const result = await response.json();
-
     if (!response.ok) {
         throw new Error(result.error || `API request failed`);
     }
-
-    return result;
+    return result as T;
 }
 
 export async function generateFluxImage(
     prompt: string,
     aspectRatio: AspectRatio | string,
+    _apiKey?: string,
+    _model?: string,
     initImage?: string,
     strength: number = 0.7
 ): Promise<string> {
@@ -45,7 +51,7 @@ export async function generateFluxImage(
 
     const replicateAspectRatio = ASPECT_RATIO_MAP[aspectRatio as AspectRatio] || "1:1";
 
-    const input: any = {
+    const input: Record<string, unknown> = {
         prompt: prompt.trim(),
         num_outputs: 1,
         output_format: "png",
@@ -61,7 +67,7 @@ export async function generateFluxImage(
     }
 
     // 1. Create prediction
-    const prediction = await callReplicateAPI('/predictions', {
+    const prediction = await callReplicateAPI<ReplicatePrediction>('/predictions', {
         version,
         input
     });
@@ -75,13 +81,12 @@ export async function generateFluxImage(
     // 2. Poll for completion
     const pollInterval = 2000;
     const maxPollTime = 180000;
-
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxPollTime) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
 
-        const statusCheck = await callReplicateAPI(
+        const statusCheck = await callReplicateAPI<ReplicatePrediction>(
             `/predictions/${predictionId}`,
             undefined,
             'GET'

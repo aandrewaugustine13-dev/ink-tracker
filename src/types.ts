@@ -1,4 +1,3 @@
-
 export enum AspectRatio {
     WIDE = 'wide',
     STD = 'std',
@@ -19,18 +18,17 @@ export interface TextElement {
     id: string;
     type: TextElementType;
     content: string;
-    x: number; // percentage 0-100
-    y: number; // percentage 0-100
-    width: number; // percentage 0-100
-    height: number; // percentage 0-100
+    x: number;
+    y: number;
+    width: number;
+    height: number;
     fontSize: number;
     color: string;
     backgroundColor?: string;
     tailDirection?: 'left' | 'right' | 'bottom' | 'none';
-    // New properties for advanced bubbles
-    rotation?: number; // degrees
-    tailX?: number; // absolute % in panel
-    tailY?: number; // absolute % in panel
+    rotation?: number;
+    tailX?: number;
+    tailY?: number;
     tailStyle?: 'pointy' | 'cloud' | 'none';
 }
 
@@ -42,8 +40,8 @@ export interface Panel {
     notes?: string;
     characterIds: string[];
     textElements: TextElement[];
-    referencePanelId?: string;          // ID of another panel whose image to use as img2img init
-    referenceStrength?: number;         // 0–1, how strongly to follow the reference
+    referencePanelId?: string;
+    referenceStrength?: number;
     title?: string;
 }
 
@@ -59,7 +57,7 @@ export interface Issue {
     pages: Page[];
 }
 
-export type ImageProvider = 'gemini' | 'fal-flux' | 'replicate-flux';
+export type ImageProvider = 'gemini' | 'fal-flux' | 'replicate-flux' | 'leonardo';
 
 export interface Project {
     id: string;
@@ -67,11 +65,12 @@ export interface Project {
     style: string;
     issueType: 'issue' | 'chapter';
     imageProvider: ImageProvider;
-    togetherApiKey?: string; // Legacy
+    togetherApiKey?: string;
     falApiKey?: string;
     replicateApiKey?: string;
-    replicateModel?: string; // version hash
-    fluxModel?: string; // used for fal-ai/flux-pro
+    replicateModel?: string;
+    leonardoApiKey?: string;
+    fluxModel?: string;
     issues: Issue[];
     characters: Character[];
 }

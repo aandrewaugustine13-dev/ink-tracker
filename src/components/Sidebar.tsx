@@ -3,6 +3,7 @@ import { AppState, Project, Character } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
 import { generateFluxImage as generateReplicateFlux } from '../services/replicateFluxService';
+import { generateLeonardoImage } from '../services/leonardoService';
 import { saveImage } from '../services/imageStorage';
 
 interface SidebarProps {
@@ -18,7 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
     const typeLabel = activeProject?.issueType === 'issue' ? 'Issue' : 'Chapter';
 
-    const STYLE_GROUPS = {
+    const STYLE_GROUPS: Record<string, string[]> = {
         "Noir & Crime": ["classic-noir", "sin-city", "crime-noir", "will-eisner"],
         "Superhero": ["bronze-superhero", "silver-superhero", "kirby-cosmic", "alex-ross", "frank-miller"],
         "Horror": ["ec-horror", "vertigo-horror", "mignola-hellboy"],
@@ -33,10 +34,12 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             setSidebarKey(activeProject?.falApiKey || '');
         } else if (activeProject?.imageProvider === 'replicate-flux') {
             setSidebarKey(activeProject?.replicateApiKey || '');
+        } else if (activeProject?.imageProvider === 'leonardo') {
+            setSidebarKey(activeProject?.leonardoApiKey || '');
         } else {
             setSidebarKey('');
         }
-    }, [activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.imageProvider]);
+    }, [activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.leonardoApiKey, activeProject?.imageProvider]);
 
     const [showCharForm, setShowCharForm] = useState(false);
     const [charName, setCharName] = useState('');
@@ -53,13 +56,11 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
     // Generate only when Replicate Flux is selected
     const handleReplicateFluxClick = async () => {
-        // If not selected, just switch provider (original behavior)
         if (activeProject?.imageProvider !== 'replicate-flux') {
             dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'replicate-flux' } });
             return;
         }
 
-        // Generation logic
         if (!activeProject?.replicateApiKey) {
             alert("Replicate API key is missing. Enter it above and SET.");
             return;
@@ -70,7 +71,6 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             return;
         }
 
-        // Use first panel for now (simple and reliable)
         const targetPanel = activePage.panels[0];
         const prompt = targetPanel.prompt?.trim();
 
@@ -85,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                 targetPanel.aspectRatio || 'square',
                 activeProject.replicateApiKey,
                 activeProject.replicateModel || '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1',
-                undefined, // initImage if needed later
+                undefined,
                 0.7
             );
 
@@ -99,9 +99,61 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             });
 
             console.log("Flux image generated and saved:", generatedUrl);
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
             console.error("Replicate Flux generation failed:", err);
-            alert(`Flux generation failed: ${err.message || 'Check console for details'}`);
+            alert(`Flux generation failed: ${errorMessage}`);
+        }
+    };
+
+    // Generate with Leonardo
+    const handleLeonardoClick = async () => {
+        if (activeProject?.imageProvider !== 'leonardo') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'leonardo' } });
+            return;
+        }
+
+        if (!activeProject?.leonardoApiKey) {
+            alert("Leonardo API key is missing. Enter it above and SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateLeonardoImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.leonardoApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Leonardo");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Leonardo image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("Leonardo generation failed:", err);
+            alert(`Leonardo generation failed: ${errorMessage}`);
         }
     };
 
@@ -169,12 +221,24 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         >
         {activeProject?.imageProvider === 'replicate-flux' ? 'GENERATE FLUX' : 'REPLICATE FLUX'}
         </button>
+
+        <button
+        onClick={handleLeonardoClick}
+        disabled={!activeProject?.leonardoApiKey}
+        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
+            activeProject?.imageProvider === 'leonardo'
+            ? 'bg-orange-600 hover:bg-orange-500 text-white'
+            : 'bg-ink-800 text-steel-600 cursor-not-allowed'
+        } disabled:opacity-50`}
+        >
+        {activeProject?.imageProvider === 'leonardo' ? 'GENERATE LEONARDO' : 'LEONARDO PHOENIX'}
+        </button>
         </div>
 
-        {(activeProject?.imageProvider === 'fal-flux' || activeProject?.imageProvider === 'replicate-flux') && (
+        {(activeProject?.imageProvider === 'fal-flux' || activeProject?.imageProvider === 'replicate-flux' || activeProject?.imageProvider === 'leonardo') && (
             <div className="mt-1 pt-2 border-t border-ink-700 space-y-2">
             <label className="text-[8px] font-mono text-steel-500 uppercase flex justify-between">
-            <span>{activeProject?.imageProvider === 'fal-flux' ? 'fal.ai' : 'Replicate'} Key</span>
+            <span>{activeProject?.imageProvider === 'fal-flux' ? 'fal.ai' : activeProject?.imageProvider === 'replicate-flux' ? 'Replicate' : 'Leonardo'} Key</span>
             {!sidebarKey && <span className="text-red-500 font-bold">MISSING!</span>}
             </label>
             <div className="flex gap-1">
@@ -182,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             type="password"
             placeholder="Enter Key..."
             value={sidebarKey}
-            onChange={(e) => setSidebarKey(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
             className="flex-1 bg-ink-950 border border-ink-700 rounded px-2 py-1 text-[9px] text-steel-300 focus:border-ember-500 outline-none"
             />
             <button
@@ -192,6 +256,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                         dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                     } else if (activeProject?.imageProvider === 'replicate-flux') {
                         dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                    } else if (activeProject?.imageProvider === 'leonardo') {
+                        dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                     }
                     alert('Key saved!');
                 }
@@ -228,7 +294,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </button>
         </div>
 
-        {/* Issues list - unchanged from your original */}
+        {/* Issues list */}
         <div className="space-y-4">
         {activeProject?.issues.map(iss => {
             const isActive = state.activeIssueId === iss.id;
@@ -245,7 +311,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                 <div className="flex items-center gap-1">
                 <span className="text-[9px] font-mono text-steel-600">{iss.pages.length}P</span>
                 <button
-                onClick={(e) => { e.stopPropagation(); if (confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
                 className="opacity-0 group-hover:opacity-100 p-1 text-steel-700 hover:text-red-500 transition-all"
                 >
                 <Icons.Trash />
@@ -280,7 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </div>
         </div>
 
-        {/* Cast section - unchanged */}
+        {/* Cast section */}
         <div>
         <div className="flex items-center justify-between mb-3 px-1">
         <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Cast</h2>
@@ -298,13 +364,13 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             autoFocus
             placeholder="Name (e.g. Detective Jack)"
             value={charName}
-            onChange={(e) => setCharName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCharName(e.target.value)}
             className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-200 focus:border-ember-500 outline-none font-bold"
             />
             <textarea
             placeholder="Description (age, vibe, key features...)"
             value={charDesc}
-            onChange={(e) => setCharDesc(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCharDesc(e.target.value)}
             rows={2}
             className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-400 focus:border-ember-500 outline-none resize-none italic"
             />
@@ -347,12 +413,12 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </div>
         </div>
 
-        {/* Art Style selector - unchanged */}
+        {/* Art Style selector */}
         <div className="p-6 border-t border-ink-700 bg-ink-950 space-y-3">
         <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest px-1">Art Style</h2>
         <select
         value={activeProject?.style}
-        onChange={(e) => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { style: e.target.value } })}
+        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { style: e.target.value } })}
         className="w-full bg-ink-800 border border-ink-700 rounded-lg px-2 py-2 text-xs text-steel-300 font-mono focus:outline-none focus:border-ember-500 transition-colors"
         >
         {Object.entries(STYLE_GROUPS).map(([groupName, styleIds]) => (
