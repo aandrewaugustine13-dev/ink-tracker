@@ -39,6 +39,7 @@ import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
 import { generateGrokImage } from './services/grokService';
 import { generateFluxImage as generateFalFlux } from './services/falFluxService';
+import { generateSeaArtImage } from './services/seaartService';
 
 /**
  * Custom modifier for dnd-kit to handle the scale factor from react-zoom-pan-pinch.
@@ -239,6 +240,8 @@ export default function App() {
             url = await generateGrokImage(fullPrompt, panel.aspectRatio, activeProject.grokApiKey, initImage, panel.referenceStrength ?? 0.7);
           } else if (activeProject.imageProvider === 'fal' && activeProject.falApiKey) {
             url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
+          } else if (activeProject.imageProvider === 'seaart' && activeProject.seaartApiKey) {
+            url = await generateSeaArtImage(fullPrompt, panel.aspectRatio, activeProject.seaartApiKey, initImage, panel.referenceStrength ?? 0.7);
           } else {
             console.warn(`No API key configured for provider: ${activeProject.imageProvider}`);
           }

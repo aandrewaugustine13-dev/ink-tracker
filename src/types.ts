@@ -62,7 +62,7 @@ export interface Issue {
     pages: Page[];
 }
 
-export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal';
+export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart';
 
 export interface Project {
     id: string;
@@ -74,6 +74,7 @@ export interface Project {
     leonardoApiKey?: string;
     grokApiKey?: string;
     falApiKey?: string;
+    seaartApiKey?: string;
     fluxModel?: string;
     issues: Issue[];
     characters: Character[];

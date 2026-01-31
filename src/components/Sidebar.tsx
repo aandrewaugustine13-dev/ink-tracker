@@ -6,6 +6,7 @@ import { generateImage as generateGeminiImage } from '../services/geminiService'
 import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
+import { generateSeaArtImage } from '../services/seaartService';
 import { saveImage } from '../services/imageStorage';
 
 interface SidebarProps {
@@ -40,10 +41,12 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             setSidebarKey(activeProject?.grokApiKey || '');
         } else if (activeProject?.imageProvider === 'fal') {
             setSidebarKey(activeProject?.falApiKey || '');
+        } else if (activeProject?.imageProvider === 'seaart') {
+            setSidebarKey(activeProject?.seaartApiKey || '');
         } else {
             setSidebarKey('');
         }
-    }, [activeProject?.geminiApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.falApiKey, activeProject?.imageProvider]);
+    }, [activeProject?.geminiApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.falApiKey, activeProject?.seaartApiKey, activeProject?.imageProvider]);
 
     const [showCharForm, setShowCharForm] = useState(false);
     const [charName, setCharName] = useState('');
@@ -265,6 +268,57 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
     };
 
+    // Generate with SeaArt
+    const handleSeaArtClick = async () => {
+        if (activeProject?.imageProvider !== 'seaart') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'seaart' } });
+            return;
+        }
+
+        if (!activeProject?.seaartApiKey) {
+            alert("SeaArt API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateSeaArtImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.seaartApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from SeaArt");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("SeaArt image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("SeaArt generation failed:", err);
+            alert(`SeaArt generation failed: ${errorMessage}`);
+        }
+    };
+
     return (
         <aside className="w-72 bg-ink-900 border-r border-ink-700 flex flex-col overflow-hidden z-30">
         <div className="p-6 border-b border-ink-700">
@@ -347,6 +401,17 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         FAL
         </button>
         </div>
+        <button
+        onClick={handleSeaArtClick}
+        className={`w-full text-[9px] font-mono py-2 rounded-lg transition-all mt-1.5 ${
+            activeProject?.imageProvider === 'seaart'
+            ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+        }`}
+        title="SeaArt - More flexible content policies"
+        >
+        SEAART (NSFW)
+        </button>
         </div>
 
         {/* API Key Input */}
@@ -356,7 +421,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         {activeProject?.imageProvider === 'gemini' ? 'Gemini' :
          activeProject?.imageProvider === 'leonardo' ? 'Leonardo' :
          activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
-         activeProject?.imageProvider === 'fal' ? 'FAL' : 'API'} Key
+         activeProject?.imageProvider === 'fal' ? 'FAL' :
+         activeProject?.imageProvider === 'seaart' ? 'SeaArt' : 'API'} Key
         </span>
         {!sidebarKey && <span className="text-red-500 font-bold animate-pulse text-[8px]">REQUIRED</span>}
         </label>
@@ -379,6 +445,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                     dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                 } else if (activeProject?.imageProvider === 'fal') {
                     dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'seaart') {
+                    dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                 }
                 alert('API key saved!');
             }
@@ -392,7 +460,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
          activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
          activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
-         activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' : ''}
+         activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' :
+         activeProject?.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
         </p>
         </div>
         </div>

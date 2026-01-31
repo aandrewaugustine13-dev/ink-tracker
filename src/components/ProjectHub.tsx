@@ -15,6 +15,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
     const [localLeonardoKey, setLocalLeonardoKey] = useState<string>('');
     const [localGrokKey, setLocalGrokKey] = useState<string>('');
     const [localFalKey, setLocalFalKey] = useState<string>('');
+    const [localSeaArtKey, setLocalSeaArtKey] = useState<string>('');
 
     useEffect(() => {
         if (editingId) {
@@ -23,6 +24,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
             setLocalLeonardoKey(proj?.leonardoApiKey || '');
             setLocalGrokKey(proj?.grokApiKey || '');
             setLocalFalKey(proj?.falApiKey || '');
+            setLocalSeaArtKey(proj?.seaartApiKey || '');
         }
     }, [editingId, state.projects]);
 
@@ -80,6 +82,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 proj.imageProvider === 'leonardo' ? 'bg-orange-600/20 text-orange-400 border-orange-600/50' :
                 proj.imageProvider === 'grok' ? 'bg-gray-600/20 text-gray-400 border-gray-600/50' :
                 proj.imageProvider === 'fal' ? 'bg-ember-500/20 text-ember-400 border-ember-500/50' :
+                proj.imageProvider === 'seaart' ? 'bg-pink-600/20 text-pink-400 border-pink-600/50' :
                 'bg-ink-800 text-steel-600 border-ink-700'
             }`}>
             {proj.imageProvider}
@@ -125,6 +128,12 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 FAL
                 </button>
                 </div>
+                <button
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'seaart' } })}
+                className={`w-full text-[10px] font-mono py-2 rounded-lg border transition-all mt-1.5 ${proj.imageProvider === 'seaart' ? 'bg-pink-600 text-white border-pink-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-pink-600/50'}`}
+                >
+                SEAART (NSFW)
+                </button>
                 </div>
 
                 {/* API Key input for selected provider */}
@@ -133,7 +142,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 {proj.imageProvider === 'gemini' ? 'Gemini' :
                  proj.imageProvider === 'leonardo' ? 'Leonardo' :
                  proj.imageProvider === 'grok' ? 'Grok (xAI)' :
-                 proj.imageProvider === 'fal' ? 'FAL' : ''} API Key
+                 proj.imageProvider === 'fal' ? 'FAL' :
+                 proj.imageProvider === 'seaart' ? 'SeaArt' : ''} API Key
                 </label>
                 <div className="flex gap-2">
                 <input
@@ -143,13 +153,15 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                     proj.imageProvider === 'gemini' ? localGeminiKey :
                     proj.imageProvider === 'leonardo' ? localLeonardoKey :
                     proj.imageProvider === 'grok' ? localGrokKey :
-                    proj.imageProvider === 'fal' ? localFalKey : ''
+                    proj.imageProvider === 'fal' ? localFalKey :
+                    proj.imageProvider === 'seaart' ? localSeaArtKey : ''
                 }
                 onChange={e => {
                     if (proj.imageProvider === 'gemini') setLocalGeminiKey(e.target.value);
                     else if (proj.imageProvider === 'leonardo') setLocalLeonardoKey(e.target.value);
                     else if (proj.imageProvider === 'grok') setLocalGrokKey(e.target.value);
                     else if (proj.imageProvider === 'fal') setLocalFalKey(e.target.value);
+                    else if (proj.imageProvider === 'seaart') setLocalSeaArtKey(e.target.value);
                 }}
                 className="flex-1 bg-ink-900 border border-ink-700 rounded-lg px-3 py-2 text-xs text-steel-300 font-mono outline-none focus:border-ember-500"
                 />
@@ -167,6 +179,9 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                     } else if (proj.imageProvider === 'fal' && localFalKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: proj.id, apiKey: localFalKey.trim() });
                         alert('FAL Key saved!');
+                    } else if (proj.imageProvider === 'seaart' && localSeaArtKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: proj.id, apiKey: localSeaArtKey.trim() });
+                        alert('SeaArt Key saved!');
                     }
                 }}
                 className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-lg uppercase text-[9px] transition-colors"
@@ -178,7 +193,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 {proj.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
                  proj.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
                  proj.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
-                 proj.imageProvider === 'fal' ? 'Get key from fal.ai' : ''}
+                 proj.imageProvider === 'fal' ? 'Get key from fal.ai' :
+                 proj.imageProvider === 'seaart' ? 'Get key from seaart.ai/api - NSFW flexible' : ''}
                 </p>
                 </div>
                 </div>
