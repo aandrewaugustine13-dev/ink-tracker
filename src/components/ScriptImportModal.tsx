@@ -15,6 +15,9 @@ const MARKER_COLORS: Record<VisualMarker, string> = {
     shattered: 'text-red-400',
     split: 'text-amber-500',
     splash: 'text-emerald-500',
+    inset: 'text-sky-400',
+    large: 'text-lime-500',
+    'full-width': 'text-pink-500',
 };
 
 export function ScriptImportModal({ onClose, onImport }: Props) {
@@ -80,21 +83,36 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
         <textarea
         value={script}
         onChange={(e) => { setScript(e.target.value); setResult(null); }}
-        placeholder={`PAGE ONE
+        placeholder={`# MY GRAPHIC NOVEL
 
-            Panel 1
-            Wide shot. City street at night.
-            CAPTION: Two hours earlier.
+## Issue #1: "The Beginning"
 
-            Panel 2
-            Close on DETECTIVE JACK, lighting a cigarette.
-            JACK: This city never sleeps.
-            JACK (thought): Neither do I anymore.
+**Written by Your Name**
 
-            Panel 3 [ECHO]
-            Flash - Jack sees a body in the alley. Shattered panel edges.
-            Artist note: Red tint, fractured borders.
-            SFX: BANG`}
+---
+
+### PAGE ONE (5 Panels)
+
+**Panel 1**
+Wide establishing shot. City street at dusk.
+
+> CAPTION: Two hours earlier.
+
+**Panel 2**
+Close on DETECTIVE JACK, lighting a cigarette.
+
+> **JACK:** This city never sleeps.
+> **JACK (thought):** Neither do I anymore.
+
+**Panel 3 (Split Panel)**
+Jack sees movement in the alley.
+
+> SFX: BANG
+
+**Panel 4**
+He draws his weapon.
+
+> **JACK (whisper):** Got you.`}
             className="flex-1 w-full bg-ink-950 border border-ink-700 rounded-xl p-4 font-mono text-xs text-steel-300 outline-none resize-none focus:border-ember-500 transition-colors"
             />
             </div>
@@ -121,6 +139,30 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
 
                 {result.success && (
                     <>
+                    {/* Issue Info */}
+                    {result.issue && (
+                        <div className="bg-ink-800 rounded-lg p-4 mb-2">
+                        <p className="text-sm font-display text-ember-500 uppercase tracking-wide">
+                            {result.issue.title}
+                        </p>
+                        {result.issue.issueNumber && (
+                            <p className="text-xs font-mono text-steel-400 mt-1">
+                                Issue #{result.issue.issueNumber}{result.issue.subtitle && `: "${result.issue.subtitle}"`}
+                            </p>
+                        )}
+                        {result.issue.writer && (
+                            <p className="text-[10px] font-mono text-steel-500 mt-1">
+                                Written by {result.issue.writer}
+                            </p>
+                        )}
+                        {result.issue.timeline && (
+                            <p className="text-[10px] font-mono text-steel-600 mt-1 italic">
+                                {result.issue.timeline}
+                            </p>
+                        )}
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-3 gap-3">
                     <div className="bg-ink-800 rounded-lg p-3 text-center">
                     <p className="text-2xl font-display text-ember-500">{result.pages.length}</p>
@@ -151,11 +193,18 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
 
                     <div className="bg-ink-800 rounded-lg p-4">
                     <p className="text-[10px] font-mono text-steel-500 uppercase mb-2">Cast Detected</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
                     {result.characters.map(char => (
-                        <span key={char.name} className="text-[10px] font-mono px-2 py-1 rounded-full bg-ink-900 text-steel-300">
-                        {char.name} <span className="text-steel-600">({char.lineCount})</span>
-                        </span>
+                        <div key={char.name} className="flex items-start gap-2">
+                            <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-ink-900 text-steel-300 flex-shrink-0">
+                                {char.name} <span className="text-steel-600">({char.lineCount})</span>
+                            </span>
+                            {char.description && (
+                                <span className="text-[9px] text-steel-500 leading-tight">
+                                    {char.description.slice(0, 80)}{char.description.length > 80 ? '...' : ''}
+                                </span>
+                            )}
+                        </div>
                     ))}
                     </div>
                     </div>
