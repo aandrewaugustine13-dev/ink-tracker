@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move } from 'lucide-react';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink } from 'lucide-react';
 import { Panel, Project, Character, AspectRatio, Page } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
@@ -45,6 +45,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
     const [isGenerating, setIsGenerating] = useState(false);
     const [showAspectMenu, setShowAspectMenu] = useState(false);
     const [showCharMenu, setShowCharMenu] = useState(false);
+    const [showRefMenu, setShowRefMenu] = useState(false);
     const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
     
     // Resizing state
@@ -396,6 +397,119 @@ const PanelCard: React.FC<PanelCardProps> = ({
                                         <span className="opacity-60 text-[10px] truncate">{char.description}</span>
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Reference Panel Selector - for consistency between panels */}
+                {activePage.panels.length > 1 && (
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowRefMenu(!showRefMenu)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between transition-colors ${
+                                panel.referencePanelId
+                                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400'
+                                    : showGutters 
+                                        ? 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100' 
+                                        : 'bg-ink-950 border border-ink-800 text-steel-500 hover:bg-ink-900'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <Link2 size={12} />
+                                {panel.referencePanelId 
+                                    ? `Linked to Panel ${activePage.panels.findIndex(p => p.id === panel.referencePanelId) + 1}`
+                                    : 'Link to previous panel...'}
+                            </span>
+                            <ChevronDown size={14} />
+                        </button>
+                        {showRefMenu && (
+                            <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-lg shadow-xl border py-1 max-h-48 overflow-y-auto ${
+                                showGutters ? 'bg-white border-gray-200' : 'bg-ink-900 border-ink-700'
+                            }`}>
+                                {/* Option to unlink */}
+                                <button
+                                    onClick={() => {
+                                        dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { referencePanelId: undefined } });
+                                        setShowRefMenu(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                                        !panel.referencePanelId
+                                            ? 'bg-ember-500/20 text-ember-500'
+                                            : showGutters 
+                                                ? 'text-gray-600 hover:bg-gray-100' 
+                                                : 'text-steel-400 hover:bg-ink-800'
+                                    }`}
+                                >
+                                    <Unlink size={12} />
+                                    <span>No reference (standalone)</span>
+                                </button>
+                                
+                                {/* List other panels with images */}
+                                {activePage.panels
+                                    .filter(p => p.id !== panel.id && p.imageUrl)
+                                    .map((refPanel, idx) => {
+                                        const panelNum = activePage.panels.findIndex(p => p.id === refPanel.id) + 1;
+                                        return (
+                                            <button
+                                                key={refPanel.id}
+                                                onClick={() => {
+                                                    dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { referencePanelId: refPanel.id } });
+                                                    setShowRefMenu(false);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                                                    panel.referencePanelId === refPanel.id
+                                                        ? 'bg-cyan-500/20 text-cyan-400'
+                                                        : showGutters 
+                                                            ? 'text-gray-600 hover:bg-gray-100' 
+                                                            : 'text-steel-400 hover:bg-ink-800'
+                                                }`}
+                                            >
+                                                <Link2 size={12} />
+                                                <span className="font-bold">Panel {panelNum}</span>
+                                                <span className="opacity-60 text-[10px] truncate flex-1">
+                                                    {refPanel.prompt?.slice(0, 30) || 'No prompt'}...
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                
+                                {activePage.panels.filter(p => p.id !== panel.id && p.imageUrl).length === 0 && (
+                                    <div className={`px-3 py-2 text-xs italic ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>
+                                        No other panels with images yet
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Reference Strength Slider */}
+                        {panel.referencePanelId && (
+                            <div className="mt-2 px-1">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-[9px] font-mono uppercase ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                                        Consistency Strength
+                                    </span>
+                                    <span className={`text-[9px] font-mono ${showGutters ? 'text-gray-600' : 'text-steel-400'}`}>
+                                        {Math.round((panel.referenceStrength || 0.7) * 100)}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0.1"
+                                    max="1"
+                                    step="0.1"
+                                    value={panel.referenceStrength || 0.7}
+                                    onChange={(e) => dispatch({ 
+                                        type: 'UPDATE_PANEL', 
+                                        panelId: panel.id, 
+                                        updates: { referenceStrength: parseFloat(e.target.value) } 
+                                    })}
+                                    className="w-full h-1 bg-ink-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                />
+                                <div className={`flex justify-between text-[8px] font-mono mt-0.5 ${showGutters ? 'text-gray-400' : 'text-steel-700'}`}>
+                                    <span>Creative</span>
+                                    <span>Consistent</span>
+                                </div>
                             </div>
                         )}
                     </div>
