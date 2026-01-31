@@ -44,7 +44,7 @@ const PanelCard: React.FC<PanelCardProps> = ({ id, index, onRemove, onGenerateIm
 
     return (
         <div ref={setNodeRef} style={style} className="border rounded-md p-2 bg-card">
-        <Group direction="horizontal" className="gap-2">
+        <div className={className} style={{ flexDirection: direction }}>
         <Panel defaultSize={10} minSize={5}>
         <div {...attributes} {...listeners} className="cursor-grab touch-none h-full flex items-center justify-center">
         <GripVertical size={20} className="text-muted-foreground" />
