@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move } from 'lucide-react';
 import { Panel, Project, Character, AspectRatio, Page } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
@@ -24,6 +23,7 @@ interface PanelCardProps {
     showGutters?: boolean;
     activePage: Page;
     isOverlay?: boolean;
+    isDragging?: boolean;
 }
 
 const MIN_WIDTH = 280;
@@ -40,6 +40,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
     showGutters = false,
     activePage,
     isOverlay = false,
+    isDragging: isDraggingProp = false,
 }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showAspectMenu, setShowAspectMenu] = useState(false);
@@ -47,22 +48,31 @@ const PanelCard: React.FC<PanelCardProps> = ({
     const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
     
     // Resizing state
-    const [dimensions, setDimensions] = useState({ width: 360, height: 420 });
     const [isResizing, setIsResizing] = useState(false);
     const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
-    const cardRef = useRef<HTMLDivElement>(null);
 
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
+    // Use panel dimensions from state, with fallbacks
+    const panelWidth = panel.width || 360;
+    const panelHeight = panel.height || 420;
+
+    const { attributes, listeners, setNodeRef, transform, isDragging: isDraggingLocal } = useDraggable({ 
         id: panel.id,
         disabled: isOverlay || isResizing
     });
 
-    const style = {
-        transition: isResizing ? 'none' : transition,
-        transform: CSS.Transform.toString(transform),
-        opacity: isDragging ? 0.5 : 1,
-        width: `${dimensions.width}px`,
-        minHeight: `${dimensions.height}px`,
+    const isDragging = isDraggingProp || isDraggingLocal;
+
+    // Calculate style with absolute positioning
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        left: panel.x || 0,
+        top: panel.y || 0,
+        width: panelWidth,
+        minHeight: panelHeight,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 1000 : 1,
+        transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+        transition: isResizing ? 'none' : 'box-shadow 0.2s',
     };
 
     // Load image from IndexedDB if needed
@@ -89,10 +99,10 @@ const PanelCard: React.FC<PanelCardProps> = ({
         resizeRef.current = {
             startX: e.clientX,
             startY: e.clientY,
-            startWidth: dimensions.width,
-            startHeight: dimensions.height,
+            startWidth: panelWidth,
+            startHeight: panelHeight,
         };
-    }, [dimensions]);
+    }, [panelWidth, panelHeight]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -101,9 +111,14 @@ const PanelCard: React.FC<PanelCardProps> = ({
             const deltaX = e.clientX - resizeRef.current.startX;
             const deltaY = e.clientY - resizeRef.current.startY;
             
-            setDimensions({
-                width: Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX),
-                height: Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY),
+            const newWidth = Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX);
+            const newHeight = Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY);
+            
+            // Update panel dimensions in state
+            dispatch({ 
+                type: 'UPDATE_PANEL', 
+                panelId: panel.id, 
+                updates: { width: newWidth, height: newHeight } 
             });
         };
 
@@ -216,16 +231,13 @@ const PanelCard: React.FC<PanelCardProps> = ({
 
     return (
         <div
-            ref={(node) => {
-                setNodeRef(node);
-                (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            }}
+            ref={setNodeRef}
             style={style}
-            className={`relative group rounded-xl border transition-all flex flex-col ${
+            className={`group rounded-xl border transition-all flex flex-col ${
                 showGutters 
-                    ? 'bg-white border-gray-300 shadow-lg' 
-                    : 'bg-ink-900 border-ink-700 shadow-2xl'
-            } ${isDragging ? 'ring-2 ring-ember-500' : ''} ${isResizing ? 'cursor-nwse-resize' : ''}`}
+                    ? 'bg-white border-gray-300 shadow-lg hover:shadow-xl' 
+                    : 'bg-ink-900 border-ink-700 shadow-2xl hover:shadow-ember-500/10'
+            } ${isDragging ? 'ring-2 ring-ember-500 shadow-2xl' : ''} ${isResizing ? 'cursor-nwse-resize' : ''}`}
         >
             {/* Header with drag handle and controls */}
             <div className={`flex items-center justify-between px-3 py-2 border-b ${
@@ -235,9 +247,10 @@ const PanelCard: React.FC<PanelCardProps> = ({
                     <div 
                         {...attributes} 
                         {...listeners} 
-                        className="cursor-grab touch-none hover:text-ember-500 transition-colors"
+                        className="cursor-grab active:cursor-grabbing touch-none hover:text-ember-500 transition-colors p-1 -ml-1 rounded hover:bg-ink-800/50"
+                        title="Drag to move"
                     >
-                        <GripVertical size={18} className={showGutters ? 'text-gray-400' : 'text-steel-600'} />
+                        <Move size={16} className={showGutters ? 'text-gray-400' : 'text-steel-600'} />
                     </div>
                     <span className={`text-xs font-mono font-bold ${showGutters ? 'text-gray-600' : 'text-steel-400'}`}>
                         {index + 1}/{total}

@@ -43,6 +43,11 @@ export interface Panel {
     referencePanelId?: string;
     referenceStrength?: number;
     title?: string;
+    // Freeform position on canvas
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
 }
 
 export interface Page {

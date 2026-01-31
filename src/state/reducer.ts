@@ -140,12 +140,20 @@ export function appReducer(state: AppState, action: Action): AppState {
                     ...iss,
                     pages: iss.pages.map(pg => {
                         if (pg.id !== action.pageId) return pg;
+                        // Calculate position for new panel (stagger them)
+                        const panelCount = pg.panels.length;
+                        const col = panelCount % 3;
+                        const row = Math.floor(panelCount / 3);
                         const newPan: Panel = {
                             id: genId(),
-                                         prompt: '',
-                                         aspectRatio: AspectRatio.WIDE,
-                                         characterIds: [],
-                                         textElements: []
+                            prompt: '',
+                            aspectRatio: AspectRatio.WIDE,
+                            characterIds: [],
+                            textElements: [],
+                            x: 40 + (col * 400),
+                            y: 40 + (row * 480),
+                            width: 360,
+                            height: 420
                         };
                         return { ...pg, panels: [...pg.panels, newPan] };
                     })

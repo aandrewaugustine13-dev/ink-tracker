@@ -1,23 +1,14 @@
-import React, { useState, useReducer, useCallback, useMemo } from 'react';
+import React, { useState, useReducer, useMemo, useRef, useCallback } from 'react';
 import {
   DndContext,
-  closestCorners,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent,
-  DragOverlay,
-  defaultDropAnimationSideEffects,
+  DragMoveEvent,
   Modifier
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy
-} from '@dnd-kit/sortable';
 import {
   TransformWrapper,
   TransformComponent,
@@ -77,26 +68,38 @@ export default function App() {
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-                             useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
+  // Track drag delta for freeform positioning
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    // We don't force zoom off here anymore, we let the scale modifier handle it
+    const panelId = event.active.id as string;
+    setActiveId(panelId);
+    const panel = activePage?.panels.find(p => p.id === panelId);
+    if (panel) {
+      dragStartPos.current = { x: panel.x || 0, y: panel.y || 0 };
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+    const { active, delta } = event;
     setActiveId(null);
-    if (active && over && active.id !== over.id && activePage) {
-      const oldIndex = activePage.panels.findIndex(p => p.id === active.id);
-      const newIndex = activePage.panels.findIndex(p => p.id === over.id);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newPanels = arrayMove(activePage.panels, oldIndex, newIndex);
-        dispatch({ type: 'REORDER_PANELS', pageId: activePage.id, panels: newPanels });
-      }
+    
+    if (active && dragStartPos.current && activePage) {
+      const panelId = active.id as string;
+      // Calculate new position based on drag delta
+      const newX = Math.max(0, dragStartPos.current.x + delta.x);
+      const newY = Math.max(0, dragStartPos.current.y + delta.y);
+      
+      dispatch({ 
+        type: 'UPDATE_PANEL', 
+        panelId, 
+        updates: { x: newX, y: newY } 
+      });
     }
+    dragStartPos.current = null;
   };
 
   const activePanelForOverlay = useMemo(() => {
@@ -270,7 +273,7 @@ export default function App() {
     panning={{ disabled: !zoomEnabled, velocityDisabled: true }}
     wheel={{ disabled: !zoomEnabled }}
     >
-    <main className={`flex-1 flex flex-col overflow-hidden relative transition-colors ${showGutters ? 'bg-gray-200' : 'bg-ink-950'} ${zoomEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+    <main className={`flex-1 flex flex-col relative transition-colors ${showGutters ? 'bg-gray-200' : 'bg-ink-950'} ${zoomEnabled ? 'cursor-grab active:cursor-grabbing overflow-hidden' : 'overflow-auto'}`}>
     <header className={`px-10 py-6 border-b flex items-center justify-between z-[100] backdrop-blur-xl transition-all ${showGutters ? 'bg-white/80 border-black' : 'bg-ink-950/50 border-ink-700/50'}`}>
     <div className="flex flex-col gap-1 overflow-hidden">
     <div className={`flex items-center gap-2 text-[9px] font-mono uppercase tracking-widest truncate ${showGutters ? 'text-gray-500' : 'text-steel-500'}`}>
@@ -317,7 +320,7 @@ export default function App() {
     </div>
     </header>
 
-    <TransformComponent wrapperClass="flex-1 overflow-hidden" contentClass="min-h-full min-w-full">
+    <TransformComponent wrapperClass="flex-1 overflow-auto" contentClass="min-h-full min-w-full">
     <ZoomableCanvas
     activePage={activePage}
     activeProject={activeProject}
@@ -355,8 +358,8 @@ export default function App() {
 }
 
 /**
- * Sub-component to hold DndContext and grid inside the TransformWrapper.
- * This allows us to use context hooks to adjust drag behavior based on zoom level.
+ * Sub-component to hold DndContext and freeform canvas inside the TransformWrapper.
+ * This allows panels to be positioned anywhere on the canvas.
  */
 function ZoomableCanvas({
   activePage, activeProject, dispatch, sensors, handleDragStart, handleDragEnd,
@@ -368,10 +371,35 @@ function ZoomableCanvas({
   // Create scale modifier inside the component so it updates with scale changes
   const modifiers = useMemo(() => [createScaleModifier(scale)], [scale]);
 
+  // Calculate canvas size based on panel positions
+  const canvasSize = useMemo(() => {
+    if (!activePage?.panels.length) return { width: 2000, height: 1500 };
+    let maxX = 2000;
+    let maxY = 1500;
+    activePage.panels.forEach((p: any) => {
+      const panelRight = (p.x || 0) + (p.width || 360) + 100;
+      const panelBottom = (p.y || 0) + (p.height || 420) + 100;
+      if (panelRight > maxX) maxX = panelRight;
+      if (panelBottom > maxY) maxY = panelBottom;
+    });
+    return { width: Math.max(2000, maxX), height: Math.max(1500, maxY) };
+  }, [activePage?.panels]);
+
   return (
-    <div className={`min-h-full w-full p-10 pb-32 transition-all ${showGutters ? 'max-w-[1400px] mx-auto' : ''} ${zoomEnabled ? 'pointer-events-none [&>*]:pointer-events-auto' : ''}`}>
+    <div 
+      className={`relative transition-all ${zoomEnabled ? 'pointer-events-none [&>*]:pointer-events-auto' : ''}`}
+      style={{ 
+        width: canvasSize.width, 
+        height: canvasSize.height,
+        minWidth: '100%',
+        minHeight: '100%',
+        background: showGutters 
+          ? 'repeating-linear-gradient(0deg, transparent, transparent 39px, #e5e5e5 39px, #e5e5e5 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #e5e5e5 39px, #e5e5e5 40px)'
+          : 'repeating-linear-gradient(0deg, transparent, transparent 39px, #1e1e26 39px, #1e1e26 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #1e1e26 39px, #1e1e26 40px)'
+      }}
+    >
     {!activePage || activePage.panels.length === 0 ? (
-      <div className="h-full min-h-[50vh] flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
       <div className={`w-56 h-56 border-4 border-dashed rounded-[3rem] flex items-center justify-center opacity-40 group hover:opacity-100 transition-opacity ${showGutters ? 'border-gray-400' : 'border-ink-900'}`}>
       <div className={`scale-[3] transition-colors ${showGutters ? 'text-gray-400 group-hover:text-black' : 'text-ink-800 group-hover:text-ember-500'}`}>
       <Icons.Plus />
@@ -380,12 +408,10 @@ function ZoomableCanvas({
       <p className={`font-display text-5xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Canvas Sterile</p>
       </div>
     ) : (
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
-      <SortableContext items={activePage.panels.map((p: any) => p.id)} strategy={rectSortingStrategy}>
-      <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 transition-all ${showGutters ? 'gap-20' : 'gap-8 md:gap-12'}`} style={{ gridAutoRows: 'min-content' }}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
       {activePage.panels.map((panel: any, idx: number) => (
-        <div key={panel.id} className="min-h-0">
         <PanelCard
+        key={panel.id}
         panel={panel}
         pageId={activePage.id}
         dispatch={dispatch}
@@ -395,29 +421,9 @@ function ZoomableCanvas({
         total={activePage.panels.length}
         showGutters={showGutters}
         activePage={activePage}
+        isDragging={activeId === panel.id}
         />
-        </div>
       ))}
-      </div>
-      </SortableContext>
-      <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.3' } } }) }}>
-      {activeId && activePanelForOverlay ? (
-        <div className="w-[300px] md:w-[400px]">
-        <PanelCard
-        panel={activePanelForOverlay}
-        pageId={activePage.id}
-        dispatch={dispatch}
-        project={activeProject!}
-        characters={activeProject?.characters || []}
-        index={activePage.panels.findIndex((p: any) => p.id === activeId)}
-        total={activePage.panels.length}
-        showGutters={showGutters}
-        activePage={activePage}
-        isOverlay
-        />
-        </div>
-      ) : null}
-      </DragOverlay>
       </DndContext>
     )}
     </div>
