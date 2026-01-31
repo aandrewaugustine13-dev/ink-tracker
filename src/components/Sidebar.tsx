@@ -108,13 +108,15 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
     // Generate with Leonardo
     const handleLeonardoClick = async () => {
+        // First click: switch to Leonardo provider
         if (activeProject?.imageProvider !== 'leonardo') {
             dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'leonardo' } });
             return;
         }
 
+        // Already on Leonardo but no key - just alert
         if (!activeProject?.leonardoApiKey) {
-            alert("Leonardo API key is missing. Enter it above and SET.");
+            alert("Leonardo API key is missing. Enter it above and click SET.");
             return;
         }
 
@@ -212,26 +214,24 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
         <button
         onClick={handleReplicateFluxClick}
-        disabled={!activeProject?.replicateApiKey}
         className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
             activeProject?.imageProvider === 'replicate-flux'
             ? 'bg-purple-700 hover:bg-purple-600 text-white'
-            : 'bg-ink-800 text-steel-600 cursor-not-allowed'
-        } disabled:opacity-50`}
+            : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
+        }`}
         >
-        {activeProject?.imageProvider === 'replicate-flux' ? 'GENERATE FLUX' : 'REPLICATE FLUX'}
+        {activeProject?.imageProvider === 'replicate-flux' ? (activeProject?.replicateApiKey ? 'GENERATE FLUX' : 'ENTER KEY BELOW') : 'REPLICATE FLUX'}
         </button>
 
         <button
         onClick={handleLeonardoClick}
-        disabled={!activeProject?.leonardoApiKey}
         className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
             activeProject?.imageProvider === 'leonardo'
             ? 'bg-orange-600 hover:bg-orange-500 text-white'
-            : 'bg-ink-800 text-steel-600 cursor-not-allowed'
-        } disabled:opacity-50`}
+            : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
+        }`}
         >
-        {activeProject?.imageProvider === 'leonardo' ? 'GENERATE LEONARDO' : 'LEONARDO PHOENIX'}
+        {activeProject?.imageProvider === 'leonardo' ? (activeProject?.leonardoApiKey ? 'GENERATE LEONARDO' : 'ENTER KEY BELOW') : 'LEONARDO PHOENIX'}
         </button>
         </div>
 
