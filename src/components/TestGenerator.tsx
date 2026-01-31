@@ -12,6 +12,7 @@ const ASPECT_RATIOS = [
 export default function TestGenerator() {
     const [prompt, setPrompt] = useState('a beautiful sunset over mountains');
     const [aspectRatio, setAspectRatio] = useState('SQUARE');
+    const [apiKey, setApiKey] = useState('');
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,11 @@ export default function TestGenerator() {
             return;
         }
 
+        if (!apiKey.trim()) {
+            setError('Please enter your Replicate API key');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         setLogs([]);
@@ -37,7 +43,8 @@ export default function TestGenerator() {
 
             const url = await generateFluxImage(
                 prompt,
-                aspectRatio
+                aspectRatio,
+                apiKey.trim()
             );
 
             addLog('Image generated successfully!');
@@ -63,6 +70,24 @@ export default function TestGenerator() {
         <p>Test if your API integration is working.</p>
 
         <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
+        <label style={{ display: 'block', marginBottom: '5px' }}>
+        Replicate API Key:
+        </label>
+        <input
+        type="password"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        placeholder="Enter your Replicate API key..."
+        style={{
+            width: '100%',
+            padding: '10px',
+            borderRadius: '4px',
+            border: '1px solid #ccc'
+        }}
+        />
+        </div>
+
         <div style={{ marginBottom: '10px' }}>
         <label style={{ display: 'block', marginBottom: '5px' }}>
         Prompt:
