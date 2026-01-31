@@ -273,8 +273,8 @@ export default function App() {
     panning={{ disabled: !zoomEnabled, velocityDisabled: true }}
     wheel={{ disabled: !zoomEnabled }}
     >
-    <main className={`flex-1 flex flex-col relative transition-colors ${showGutters ? 'bg-gray-200' : 'bg-ink-950'} ${zoomEnabled ? 'cursor-grab active:cursor-grabbing overflow-hidden' : 'overflow-auto'}`}>
-    <header className={`px-10 py-6 border-b flex items-center justify-between z-[100] backdrop-blur-xl transition-all ${showGutters ? 'bg-white/80 border-black' : 'bg-ink-950/50 border-ink-700/50'}`}>
+    <main className={`flex-1 flex flex-col relative transition-colors ${showGutters ? 'bg-gray-200' : 'bg-ink-950'} ${zoomEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ minHeight: 0 }}>
+    <header className={`px-10 py-6 border-b flex items-center justify-between z-[100] backdrop-blur-xl transition-all flex-shrink-0 ${showGutters ? 'bg-white/80 border-black' : 'bg-ink-950/50 border-ink-700/50'}`}>
     <div className="flex flex-col gap-1 overflow-hidden">
     <div className={`flex items-center gap-2 text-[9px] font-mono uppercase tracking-widest truncate ${showGutters ? 'text-gray-500' : 'text-steel-500'}`}>
     <span>{activeProject?.title}</span>
@@ -320,7 +320,11 @@ export default function App() {
     </div>
     </header>
 
-    <TransformComponent wrapperClass="flex-1 overflow-auto" contentClass="min-h-full min-w-full">
+    <TransformComponent 
+    wrapperClass={`flex-1 ${zoomEnabled ? 'overflow-hidden' : 'overflow-auto'}`} 
+    contentClass="min-h-full min-w-full"
+    wrapperStyle={{ minHeight: 0 }}
+    >
     <ZoomableCanvas
     activePage={activePage}
     activeProject={activeProject}
