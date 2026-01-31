@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink } from 'lucide-react';
-import { Panel, Project, Character, AspectRatio, Page } from '../types';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone } from 'lucide-react';
+import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
 import { getImage, saveImage } from '../services/imageStorage';
+import { genId } from '../utils/helpers';
+import TextOverlay from './TextOverlay';
 
 // Import all generation services
 import { generateImage as generateGeminiImage } from '../services/geminiService';
@@ -230,6 +232,23 @@ const PanelCard: React.FC<PanelCardProps> = ({
         setImageDataUrl(null);
     };
 
+    // Add text element (dialogue, thought, caption, phone)
+    const handleAddTextElement = (type: TextElementType) => {
+        const newElement: TextElement = {
+            id: genId(),
+            type,
+            content: type === 'caption' ? 'Caption text...' : type === 'phone' ? 'Text message...' : 'Click to edit...',
+            x: 10 + Math.random() * 20,
+            y: 10 + Math.random() * 20,
+            width: 30,
+            height: 15,
+            fontSize: type === 'caption' ? 14 : 16,
+            color: '#000000',
+            tailStyle: type === 'thought' ? 'cloud' : type === 'dialogue' ? 'pointy' : 'none',
+        };
+        dispatch({ type: 'ADD_TEXT_ELEMENT', panelId: panel.id, element: newElement });
+    };
+
     const aspectConfig = ASPECT_CONFIGS[panel.aspectRatio];
     const selectedChars = characters.filter(c => panel.characterIds.includes(c.id));
 
@@ -320,13 +339,59 @@ const PanelCard: React.FC<PanelCardProps> = ({
                                 alt={`Panel ${index + 1}`} 
                                 className="w-full h-full object-cover"
                             />
-                            <button
-                                onClick={handleClearImage}
-                                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                title="Clear image"
-                            >
-                                <Trash2 size={12} />
-                            </button>
+                            
+                            {/* Render text overlays */}
+                            {panel.textElements.map(element => (
+                                <TextOverlay
+                                    key={element.id}
+                                    element={element}
+                                    panelId={panel.id}
+                                    dispatch={dispatch}
+                                />
+                            ))}
+                            
+                            {/* Image controls toolbar */}
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={handleClearImage}
+                                    className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors"
+                                    title="Clear image"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                            
+                            {/* Text element toolbar */}
+                            <div className="absolute bottom-2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => handleAddTextElement('dialogue')}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                                    title="Add dialogue bubble"
+                                >
+                                    <MessageCircle size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleAddTextElement('thought')}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                                    title="Add thought bubble"
+                                >
+                                    <Cloud size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleAddTextElement('caption')}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                                    title="Add caption box"
+                                >
+                                    <Type size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleAddTextElement('phone')}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-lg transition-colors"
+                                    title="Add phone/text message"
+                                >
+                                    <Smartphone size={14} />
+                                </button>
+                            </div>
                         </>
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
