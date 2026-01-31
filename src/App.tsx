@@ -45,10 +45,9 @@ import ZoomControls from './components/ZoomControls';
 import ProjectHub from './components/ProjectHub';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
-import { generateFluxImage as generateFalFlux } from './services/falFluxService';
-import { generateFluxImage as generateReplicateFlux } from './services/replicateFluxService';
-import { generateGrokImage } from './services/grokService';
 import { generateLeonardoImage } from './services/leonardoService';
+import { generateGrokImage } from './services/grokService';
+import { generateFluxImage as generateFalFlux } from './services/falFluxService';
 
 /**
  * Custom modifier for dnd-kit to handle the scale factor from react-zoom-pan-pinch.
@@ -231,14 +230,12 @@ export default function App() {
         try {
           if (activeProject.imageProvider === 'gemini' && activeProject.geminiApiKey) {
             url = await generateGeminiImage(fullPrompt, config.ratio, activeProject.geminiApiKey, initImage, panel.referenceStrength ?? 0.7);
-          } else if (activeProject.imageProvider === 'fal-flux' && activeProject.falApiKey) {
-            url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
-          } else if (activeProject.imageProvider === 'replicate-flux' && activeProject.replicateApiKey) {
-            url = await generateReplicateFlux(fullPrompt, panel.aspectRatio, activeProject.replicateApiKey, activeProject.replicateModel || '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1', initImage, panel.referenceStrength ?? 0.7);
           } else if (activeProject.imageProvider === 'leonardo' && activeProject.leonardoApiKey) {
             url = await generateLeonardoImage(fullPrompt, panel.aspectRatio, activeProject.leonardoApiKey, initImage, panel.referenceStrength ?? 0.7);
           } else if (activeProject.imageProvider === 'grok' && activeProject.grokApiKey) {
             url = await generateGrokImage(fullPrompt, panel.aspectRatio, activeProject.grokApiKey, initImage, panel.referenceStrength ?? 0.7);
+          } else if (activeProject.imageProvider === 'fal' && activeProject.falApiKey) {
+            url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
           } else {
             console.warn(`No API key configured for provider: ${activeProject.imageProvider}`);
           }

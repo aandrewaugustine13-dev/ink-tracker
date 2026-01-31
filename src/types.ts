@@ -57,7 +57,7 @@ export interface Issue {
     pages: Page[];
 }
 
-export type ImageProvider = 'gemini' | 'fal-flux' | 'replicate-flux' | 'leonardo' | 'grok';
+export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal';
 
 export interface Project {
     id: string;
@@ -65,13 +65,10 @@ export interface Project {
     style: string;
     issueType: 'issue' | 'chapter';
     imageProvider: ImageProvider;
-    togetherApiKey?: string;
-    falApiKey?: string;
-    replicateApiKey?: string;
-    replicateModel?: string;
-    leonardoApiKey?: string;
     geminiApiKey?: string;
+    leonardoApiKey?: string;
     grokApiKey?: string;
+    falApiKey?: string;
     fluxModel?: string;
     issues: Issue[];
     characters: Character[];

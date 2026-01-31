@@ -9,10 +9,9 @@ import { getImage, saveImage } from '../services/imageStorage';
 
 // Import all generation services
 import { generateImage as generateGeminiImage } from '../services/geminiService';
-import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
-import { generateFluxImage as generateReplicateFlux } from '../services/replicateFluxService';
 import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
+import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 
 interface PanelCardProps {
     panel: Panel;
@@ -163,14 +162,12 @@ const PanelCard: React.FC<PanelCardProps> = ({
             // Call the appropriate service based on provider
             if (project.imageProvider === 'gemini' && project.geminiApiKey) {
                 url = await generateGeminiImage(fullPrompt, config.ratio, project.geminiApiKey, initImage, panel.referenceStrength ?? 0.7);
-            } else if (project.imageProvider === 'fal-flux' && project.falApiKey) {
-                url = await generateFalFlux(fullPrompt, panel.aspectRatio, project.falApiKey, project.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
-            } else if (project.imageProvider === 'replicate-flux' && project.replicateApiKey) {
-                url = await generateReplicateFlux(fullPrompt, panel.aspectRatio, project.replicateApiKey, project.replicateModel, initImage, panel.referenceStrength ?? 0.7);
             } else if (project.imageProvider === 'leonardo' && project.leonardoApiKey) {
                 url = await generateLeonardoImage(fullPrompt, panel.aspectRatio, project.leonardoApiKey, initImage, panel.referenceStrength ?? 0.7);
             } else if (project.imageProvider === 'grok' && project.grokApiKey) {
                 url = await generateGrokImage(fullPrompt, panel.aspectRatio, project.grokApiKey, initImage, panel.referenceStrength ?? 0.7);
+            } else if (project.imageProvider === 'fal' && project.falApiKey) {
+                url = await generateFalFlux(fullPrompt, panel.aspectRatio, project.falApiKey, project.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
             } else {
                 throw new Error(`No API key configured for ${project.imageProvider}. Please add your API key in the sidebar.`);
             }

@@ -34,7 +34,6 @@ export function appReducer(state: AppState, action: Action): AppState {
                 issueType: 'issue',
                 imageProvider: 'gemini',
                 fluxModel: 'fal-ai/flux-pro',
-                replicateModel: '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1',
                 characters: [],
                 issues: [{ id: genId(), title: 'Issue #1', pages: [{ id: genId(), number: 1, panels: [] }] }]
             };
@@ -52,28 +51,20 @@ export function appReducer(state: AppState, action: Action): AppState {
             newState.projects = state.projects.map(p => p.id === action.id ? { ...p, ...action.updates } : p);
             break;
 
-        case 'UPDATE_PROJECT_FAL_KEY':
-            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, falApiKey: action.apiKey } : p);
-            break;
-
-        case 'UPDATE_PROJECT_REPLICATE_KEY':
-            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, replicateApiKey: action.apiKey } : p);
-            break;
-
-        case 'UPDATE_PROJECT_REPLICATE_MODEL':
-            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, replicateModel: action.model } : p);
+        case 'UPDATE_PROJECT_GEMINI_KEY':
+            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, geminiApiKey: action.apiKey } : p);
             break;
 
         case 'UPDATE_PROJECT_LEONARDO_KEY':
             newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, leonardoApiKey: action.apiKey } : p);
             break;
 
-        case 'UPDATE_PROJECT_GEMINI_KEY':
-            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, geminiApiKey: action.apiKey } : p);
-            break;
-
         case 'UPDATE_PROJECT_GROK_KEY':
             newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, grokApiKey: action.apiKey } : p);
+            break;
+
+        case 'UPDATE_PROJECT_FAL_KEY':
+            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, falApiKey: action.apiKey } : p);
             break;
 
         case 'DELETE_PROJECT': {
