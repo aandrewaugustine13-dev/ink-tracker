@@ -408,9 +408,9 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
             : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
         }`}
-        title="SeaArt - More flexible content policies"
+        title="SeaArt - Creative image generation"
         >
-        SEAART (NSFW)
+        SEAART
         </button>
         </div>
 

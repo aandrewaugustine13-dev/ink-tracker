@@ -132,7 +132,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'seaart' } })}
                 className={`w-full text-[10px] font-mono py-2 rounded-lg border transition-all mt-1.5 ${proj.imageProvider === 'seaart' ? 'bg-pink-600 text-white border-pink-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-pink-600/50'}`}
                 >
-                SEAART (NSFW)
+                SEAART
                 </button>
                 </div>
 
@@ -194,7 +194,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                  proj.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
                  proj.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
                  proj.imageProvider === 'fal' ? 'Get key from fal.ai' :
-                 proj.imageProvider === 'seaart' ? 'Get key from seaart.ai/api - NSFW flexible' : ''}
+                 proj.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
                 </p>
                 </div>
                 </div>
