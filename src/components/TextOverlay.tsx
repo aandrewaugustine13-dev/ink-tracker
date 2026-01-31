@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TextElement, TextElementType } from '../types';
 import { Action } from '../state/actions';
 import { Icons } from '../constants';
@@ -15,11 +15,38 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
     const [isDragging, setIsDragging] = useState<'bubble' | 'tail' | null>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0, startX: 0, startY: 0 });
+    
+    // Track actual bubble bounds in percentages for tail connection
+    const [bubbleBounds, setBubbleBounds] = useState({ centerX: 0, centerY: 0, bottomY: 0 });
 
     const rotation = element.rotation || 0;
-    const tailX = element.tailX ?? (element.x + element.width / 2);
-    const tailY = element.tailY ?? (element.y + element.height + 10);
+    const tailX = element.tailX ?? (element.x + 15);
+    const tailY = element.tailY ?? (element.y + 25);
     const tailStyle = element.tailStyle ?? (element.type === 'thought' ? 'cloud' : 'pointy');
+
+    // Calculate actual bubble bounds when element changes or on mount
+    useEffect(() => {
+        const updateBounds = () => {
+            if (overlayRef.current && overlayRef.current.parentElement) {
+                const parent = overlayRef.current.parentElement;
+                const parentRect = parent.getBoundingClientRect();
+                const bubbleRect = overlayRef.current.getBoundingClientRect();
+                
+                // Convert to percentage coordinates
+                const centerX = ((bubbleRect.left - parentRect.left + bubbleRect.width / 2) / parentRect.width) * 100;
+                const centerY = ((bubbleRect.top - parentRect.top + bubbleRect.height / 2) / parentRect.height) * 100;
+                const bottomY = ((bubbleRect.top - parentRect.top + bubbleRect.height) / parentRect.height) * 100;
+                
+                setBubbleBounds({ centerX, centerY, bottomY });
+            }
+        };
+        
+        // Update on mount and when element position changes
+        updateBounds();
+        // Also update after a brief delay to catch any layout shifts
+        const timer = setTimeout(updateBounds, 50);
+        return () => clearTimeout(timer);
+    }, [element.x, element.y, element.content, element.fontSize]);
 
     const handlePointerDown = (e: React.PointerEvent, target: 'bubble' | 'tail') => {
         e.stopPropagation();
@@ -75,8 +102,12 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
         phone: "bubble-phone"
     };
 
-    const bubbleCenterX = element.x + element.width / 2;
-    const bubbleCenterY = element.y + element.height / 2;
+    // Use actual bubble bounds for tail connection
+    const { centerX: bubbleCenterX, centerY: bubbleCenterY, bottomY: bubbleBottomY } = bubbleBounds;
+    
+    // Calculate tail base point - where it connects to bubble (at the bottom edge)
+    const tailBaseX = bubbleCenterX;
+    const tailBaseY = bubbleBottomY;
 
     return (
         <>
@@ -85,20 +116,20 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
         >
-        {tailStyle !== 'none' && element.type !== 'caption' && (
+        {tailStyle !== 'none' && element.type !== 'caption' && bubbleBounds.centerX > 0 && (
             tailStyle === 'pointy' ? (
                 <polygon
-                points={`${bubbleCenterX},${bubbleCenterY} ${tailX},${tailY} ${bubbleCenterX + 3},${bubbleCenterY + 2}`}
+                points={`${tailBaseX - 2},${tailBaseY - 0.5} ${tailX},${tailY} ${tailBaseX + 2},${tailBaseY - 0.5}`}
                 fill="white"
                 stroke="black"
-                strokeWidth="0.5"
-                style={{ filter: 'drop-shadow(0.5px 0.5px 0px black)' }}
+                strokeWidth="0.4"
+                strokeLinejoin="round"
                 />
             ) : (
                 <>
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.35} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.35} r="2.5" fill="white" stroke="black" strokeWidth="0.4" />
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.55} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.55} r="1.8" fill="white" stroke="black" strokeWidth="0.3" />
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.75} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.75} r="1.2" fill="white" stroke="black" strokeWidth="0.2" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.25} cy={tailBaseY + (tailY - tailBaseY) * 0.25} r="2" fill="white" stroke="black" strokeWidth="0.3" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.5} cy={tailBaseY + (tailY - tailBaseY) * 0.5} r="1.5" fill="white" stroke="black" strokeWidth="0.25" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.75} cy={tailBaseY + (tailY - tailBaseY) * 0.75} r="1" fill="white" stroke="black" strokeWidth="0.2" />
                 </>
             )
         )}
