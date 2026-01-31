@@ -80,21 +80,25 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
 
     return (
         <>
-        <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-[50]">
+        <svg 
+            className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-[50]"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+        >
         {tailStyle !== 'none' && element.type !== 'caption' && (
             tailStyle === 'pointy' ? (
                 <polygon
-                points={`${bubbleCenterX},${bubbleCenterY} ${tailX},${tailY} ${bubbleCenterX + 2},${bubbleCenterY}`}
+                points={`${bubbleCenterX},${bubbleCenterY} ${tailX},${tailY} ${bubbleCenterX + 3},${bubbleCenterY + 2}`}
                 fill="white"
                 stroke="black"
-                strokeWidth="0.3"
-                style={{ filter: 'drop-shadow(2px 2px 0px black)' }}
+                strokeWidth="0.5"
+                style={{ filter: 'drop-shadow(0.5px 0.5px 0px black)' }}
                 />
             ) : (
                 <>
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.3} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.3} r="1.5" fill="white" stroke="black" strokeWidth="0.3" />
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.6} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.6} r="1.0" fill="white" stroke="black" strokeWidth="0.2" />
-                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.8} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.8} r="0.5" fill="white" stroke="black" strokeWidth="0.1" />
+                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.35} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.35} r="2.5" fill="white" stroke="black" strokeWidth="0.4" />
+                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.55} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.55} r="1.8" fill="white" stroke="black" strokeWidth="0.3" />
+                <circle cx={bubbleCenterX + (tailX - bubbleCenterX) * 0.75} cy={bubbleCenterY + (tailY - bubbleCenterY) * 0.75} r="1.2" fill="white" stroke="black" strokeWidth="0.2" />
                 </>
             )
         )}
