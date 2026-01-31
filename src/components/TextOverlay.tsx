@@ -152,7 +152,7 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
         onPointerUp={handlePointerUp}
         onFocusCapture={() => setIsFocused(true)}
         tabIndex={0}
-        className={`comic-overlay-base ${typeClasses[element.type]} ${isFocused ? 'element-selected shadow-[0_0_15px_rgba(255,107,53,0.5)]' : ''}`}
+        className={`comic-overlay-base ${typeClasses[element.type]} ${isFocused ? 'element-selected shadow-[0_0_15px_rgba(59,130,246,0.5)]' : ''}`}
         style={{
             left: `${element.x}%`,
             top: `${element.y}%`,
