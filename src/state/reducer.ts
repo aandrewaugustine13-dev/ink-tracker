@@ -68,6 +68,14 @@ export function appReducer(state: AppState, action: Action): AppState {
             newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, leonardoApiKey: action.apiKey } : p);
             break;
 
+        case 'UPDATE_PROJECT_GEMINI_KEY':
+            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, geminiApiKey: action.apiKey } : p);
+            break;
+
+        case 'UPDATE_PROJECT_GROK_KEY':
+            newState.projects = state.projects.map(p => p.id === action.projectId ? { ...p, grokApiKey: action.apiKey } : p);
+            break;
+
         case 'DELETE_PROJECT': {
             newState.projects = state.projects.filter(p => p.id !== action.id);
             if (state.activeProjectId === action.id) {

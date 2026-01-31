@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Project, Character } from '../types';
+import { AppState } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
 import { generateFluxImage as generateReplicateFlux } from '../services/replicateFluxService';
 import { generateLeonardoImage } from '../services/leonardoService';
+import { generateImage as generateGeminiImage } from '../services/geminiService';
+import { generateGrokImage } from '../services/grokService';
 import { saveImage } from '../services/imageStorage';
 
 interface SidebarProps {
@@ -30,16 +32,20 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     const [sidebarKey, setSidebarKey] = useState('');
 
     useEffect(() => {
-        if (activeProject?.imageProvider === 'fal-flux') {
+        if (activeProject?.imageProvider === 'gemini') {
+            setSidebarKey(activeProject?.geminiApiKey || '');
+        } else if (activeProject?.imageProvider === 'fal-flux') {
             setSidebarKey(activeProject?.falApiKey || '');
         } else if (activeProject?.imageProvider === 'replicate-flux') {
             setSidebarKey(activeProject?.replicateApiKey || '');
         } else if (activeProject?.imageProvider === 'leonardo') {
             setSidebarKey(activeProject?.leonardoApiKey || '');
+        } else if (activeProject?.imageProvider === 'grok') {
+            setSidebarKey(activeProject?.grokApiKey || '');
         } else {
             setSidebarKey('');
         }
-    }, [activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.leonardoApiKey, activeProject?.imageProvider]);
+    }, [activeProject?.geminiApiKey, activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.imageProvider]);
 
     const [showCharForm, setShowCharForm] = useState(false);
     const [charName, setCharName] = useState('');
@@ -159,6 +165,108 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
     };
 
+    // Generate with Gemini
+    const handleGeminiClick = async () => {
+        if (activeProject?.imageProvider !== 'gemini') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'gemini' } });
+            return;
+        }
+
+        if (!activeProject?.geminiApiKey) {
+            alert("Gemini API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateGeminiImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.geminiApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Gemini");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Gemini image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("Gemini generation failed:", err);
+            alert(`Gemini generation failed: ${errorMessage}`);
+        }
+    };
+
+    // Generate with Grok
+    const handleGrokClick = async () => {
+        if (activeProject?.imageProvider !== 'grok') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'grok' } });
+            return;
+        }
+
+        if (!activeProject?.grokApiKey) {
+            alert("Grok (xAI) API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateGrokImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.grokApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Grok");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Grok image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("Grok generation failed:", err);
+            alert(`Grok generation failed: ${errorMessage}`);
+        }
+    };
+
     return (
         <aside className="w-72 bg-ink-900 border-r border-ink-700 flex flex-col overflow-hidden z-30">
         <div className="p-6 border-b border-ink-700">
@@ -197,35 +305,53 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </button>
 
         <div className="flex flex-col gap-1 mt-2">
-        <div className="flex gap-1">
+        <p className="text-[8px] font-mono text-steel-600 uppercase tracking-wide mb-1">Image Provider</p>
+        <div className="grid grid-cols-2 gap-1">
         <button
-        onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'gemini' } })}
-        className={`flex-1 text-[8px] font-mono py-1 rounded transition-colors ${activeProject?.imageProvider === 'gemini' ? 'bg-ember-500 text-ink-950 font-bold' : 'bg-ink-900 text-steel-600'}`}
+        onClick={handleGeminiClick}
+        className={`text-[8px] font-mono py-1.5 rounded transition-colors ${
+            activeProject?.imageProvider === 'gemini'
+            ? 'bg-blue-600 hover:bg-blue-500 text-white font-bold'
+            : 'bg-ink-900 text-steel-600 hover:bg-ink-800'
+        }`}
         >
         GEMINI
         </button>
         <button
+        onClick={handleGrokClick}
+        className={`text-[8px] font-mono py-1.5 rounded transition-colors ${
+            activeProject?.imageProvider === 'grok'
+            ? 'bg-gray-700 hover:bg-gray-600 text-white font-bold'
+            : 'bg-ink-900 text-steel-600 hover:bg-ink-800'
+        }`}
+        >
+        GROK
+        </button>
+        <button
         onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'fal-flux' } })}
-        className={`flex-1 text-[8px] font-mono py-1 rounded transition-colors ${activeProject?.imageProvider === 'fal-flux' ? 'bg-ember-500 text-ink-950 font-bold' : 'bg-ink-900 text-steel-600'}`}
+        className={`text-[8px] font-mono py-1.5 rounded transition-colors ${
+            activeProject?.imageProvider === 'fal-flux'
+            ? 'bg-ember-500 text-ink-950 font-bold'
+            : 'bg-ink-900 text-steel-600 hover:bg-ink-800'
+        }`}
         >
         FAL.AI
         </button>
-        </div>
-
         <button
         onClick={handleReplicateFluxClick}
-        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
+        className={`text-[8px] font-mono py-1.5 rounded transition-colors ${
             activeProject?.imageProvider === 'replicate-flux'
-            ? 'bg-purple-700 hover:bg-purple-600 text-white'
-            : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
+            ? 'bg-purple-700 hover:bg-purple-600 text-white font-bold'
+            : 'bg-ink-900 text-steel-600 hover:bg-ink-800'
         }`}
         >
-        {activeProject?.imageProvider === 'replicate-flux' ? (activeProject?.replicateApiKey ? 'GENERATE FLUX' : 'ENTER KEY BELOW') : 'REPLICATE FLUX'}
+        REPLICATE
         </button>
-
+        </div>
+        
         <button
         onClick={handleLeonardoClick}
-        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
+        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors mt-1 ${
             activeProject?.imageProvider === 'leonardo'
             ? 'bg-orange-600 hover:bg-orange-500 text-white'
             : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
@@ -235,40 +361,56 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         </button>
         </div>
 
-        {(activeProject?.imageProvider === 'fal-flux' || activeProject?.imageProvider === 'replicate-flux' || activeProject?.imageProvider === 'leonardo') && (
-            <div className="mt-1 pt-2 border-t border-ink-700 space-y-2">
-            <label className="text-[8px] font-mono text-steel-500 uppercase flex justify-between">
-            <span>{activeProject?.imageProvider === 'fal-flux' ? 'fal.ai' : activeProject?.imageProvider === 'replicate-flux' ? 'Replicate' : 'Leonardo'} Key</span>
-            {!sidebarKey && <span className="text-red-500 font-bold">MISSING!</span>}
-            </label>
-            <div className="flex gap-1">
-            <input
-            type="password"
-            placeholder="Enter Key..."
-            value={sidebarKey}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
-            className="flex-1 bg-ink-950 border border-ink-700 rounded px-2 py-1 text-[9px] text-steel-300 focus:border-ember-500 outline-none"
-            />
-            <button
-            onClick={() => {
-                if (sidebarKey.trim()) {
-                    if (activeProject?.imageProvider === 'fal-flux') {
-                        dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    } else if (activeProject?.imageProvider === 'replicate-flux') {
-                        dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    } else if (activeProject?.imageProvider === 'leonardo') {
-                        dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    }
-                    alert('Key saved!');
+        {/* API Key Input - shown for all providers */}
+        <div className="mt-2 pt-2 border-t border-ink-700 space-y-2">
+        <label className="text-[8px] font-mono text-steel-500 uppercase flex justify-between">
+        <span>
+        {activeProject?.imageProvider === 'gemini' ? 'Gemini' :
+         activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
+         activeProject?.imageProvider === 'fal-flux' ? 'fal.ai' :
+         activeProject?.imageProvider === 'replicate-flux' ? 'Replicate' :
+         activeProject?.imageProvider === 'leonardo' ? 'Leonardo' : 'API'} Key
+        </span>
+        {!sidebarKey && <span className="text-red-500 font-bold animate-pulse">REQUIRED</span>}
+        </label>
+        <div className="flex gap-1">
+        <input
+        type="password"
+        placeholder="Enter API Key..."
+        value={sidebarKey}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
+        className="flex-1 bg-ink-950 border border-ink-700 rounded px-2 py-1.5 text-[9px] text-steel-300 focus:border-ember-500 outline-none"
+        />
+        <button
+        onClick={() => {
+            if (sidebarKey.trim()) {
+                if (activeProject?.imageProvider === 'gemini') {
+                    dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'grok') {
+                    dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'fal-flux') {
+                    dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'replicate-flux') {
+                    dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'leonardo') {
+                    dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                 }
-            }}
-            className="bg-ink-700 hover:bg-ember-500 text-steel-400 hover:text-ink-950 px-2 rounded text-[8px] transition-colors font-bold"
-            >
-            SET
-            </button>
-            </div>
-            </div>
-        )}
+                alert('API key saved!');
+            }
+        }}
+        className="bg-ink-700 hover:bg-ember-500 text-steel-400 hover:text-ink-950 px-3 rounded text-[8px] transition-colors font-bold"
+        >
+        SET
+        </button>
+        </div>
+        <p className="text-[7px] text-steel-600 italic">
+        {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
+         activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai' :
+         activeProject?.imageProvider === 'fal-flux' ? 'Get key from fal.ai' :
+         activeProject?.imageProvider === 'replicate-flux' ? 'Get key from replicate.com' :
+         activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' : ''}
+        </p>
+        </div>
         </div>
         </div>
 

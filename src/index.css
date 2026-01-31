@@ -84,3 +84,52 @@
   outline: 2px solid #ff6b35;
   outline-offset: 2px;
 }
+
+/* Aspect ratio classes for panel cards */
+.aspect-panel-wide {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-panel-std {
+  aspect-ratio: 4 / 3;
+}
+
+.aspect-panel-square {
+  aspect-ratio: 1 / 1;
+}
+
+.aspect-panel-tall {
+  aspect-ratio: 3 / 4;
+}
+
+.aspect-panel-portrait {
+  aspect-ratio: 9 / 16;
+}
+
+/* Custom scrollbar for panel content */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #2a2a35;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #404050;
+}
+
+/* Light mode scrollbar */
+.bg-white .scrollbar-thin::-webkit-scrollbar-thumb,
+[class*="bg-gray"] .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+}
+
+[class*="bg-gray"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}
