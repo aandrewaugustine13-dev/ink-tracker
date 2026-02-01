@@ -94,6 +94,7 @@ export interface Project {
     grokApiKey?: string;
     falApiKey?: string;
     seaartApiKey?: string;
+    customStylePrompt?: string;
     fluxModel?: string;
     issues: Issue[];
     characters: Character[];
