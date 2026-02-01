@@ -34,6 +34,21 @@ export const ART_STYLES = [
 { id: 'cyberpunk-noir', name: 'Western Cyberpunk Noir', prompt: 'Western cyberpunk neon-noir comic art, intricate mechanical details, glowing accents, gritty high-tech low-life aesthetic, intense lighting' }
 ];
 
+// Americana & Subverted Wholesome
+{ id: 'norman-rockwell', name: 'Norman Rockwell', prompt: 'Norman Rockwell illustration style, folksy Americana, warm nostalgic palette, Saturday Evening Post aesthetic, detailed realistic figures, idyllic small-town scenes, homespun warmth with subtle underlying tension, masterful composition' },
+{ id: 'kinkade-luminous', name: 'Kinkade Luminous', prompt: 'Thomas Kinkade style, luminous glowing cottages, idyllic pastoral landscapes, soft diffused golden light, painterly warmth, ethereal glow effects, cozy nostalgic atmosphere, romanticized nature' },
+{ id: 'lisa-frank', name: 'Lisa Frank', prompt: 'Lisa Frank style, hypersaturated neon rainbow colors, sparkles and glitter effects, 90s aesthetic, kawaii cute characters, gradient backgrounds, maximalist whimsy, unicorns and dolphins, bold outlines' },
+
+// Dark Fantasy & Horror (add to existing Horror group)
+{ id: 'hellraiser', name: 'Hellraiser', prompt: 'Clive Barker Hellraiser aesthetic, cenobite body horror, leather and chains, puzzle box motifs, sadomasochistic nightmare imagery, dim crimson and black palette, intricate geometric torture designs, flesh and metal fusion' },
+{ id: 'spawn-mcfarlane', name: 'Spawn (McFarlane)', prompt: 'Todd McFarlane Spawn style, elaborate flowing capes with impossible detail, hellfire green necroplasm glow, gritty urban supernatural, heavy dramatic shadows, dynamic exaggerated poses, chains skulls and spikes, 90s Image comics energy' },
+
+// Epic Sci-Fi (new group or add to Realistic & Experimental)
+{ id: 'dune-epic', name: 'Dune', prompt: 'Dune aesthetic, epic desert landscapes, ornate stillsuits with intricate detail, sandworm scale and grandeur, spice-blue eyes, arid orange ochre and deep blue palette, Frank Herbert vision, baroque sci-fi grandeur, harsh sunlight and deep shadows' },
+
+// Custom - this is a special one
+{ id: 'custom', name: '✏️ Custom Style', prompt: '' },
+
 export const ASPECT_CONFIGS: Record<AspectRatio, { label: string; class: string; ratio: string }> = {
     [AspectRatio.WIDE]: { label: 'Wide (16:9)', class: 'aspect-panel-wide', ratio: '16:9' },
     [AspectRatio.STD]: { label: 'Standard (4:3)', class: 'aspect-panel-std', ratio: '4:3' },
