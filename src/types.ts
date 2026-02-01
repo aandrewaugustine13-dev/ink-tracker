@@ -26,6 +26,7 @@ export interface Character {
         clothing?: string;
         accessories?: string;
         additionalNotes?: string;
+        customStylePrompt?: string;
     };
 }
 
