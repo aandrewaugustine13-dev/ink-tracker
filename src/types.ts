@@ -60,6 +60,7 @@ export interface Issue {
     id: string;
     title: string;
     pages: Page[];
+    scriptText?: string; // Original imported script for reference
 }
 
 export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart';

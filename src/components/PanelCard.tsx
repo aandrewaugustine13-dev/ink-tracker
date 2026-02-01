@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload } from 'lucide-react';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload, RefreshCw, Copy, ClipboardPaste } from 'lucide-react';
 import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
@@ -27,6 +27,11 @@ interface PanelCardProps {
     activePage: Page;
     isOverlay?: boolean;
     isDragging?: boolean;
+    isSelected?: boolean;
+    onSelect?: () => void;
+    copiedSettings?: { aspectRatio: AspectRatio; characterIds: string[] } | null;
+    onCopySettings?: () => void;
+    onPasteSettings?: () => void;
 }
 
 const MIN_WIDTH = 280;
@@ -44,6 +49,11 @@ const PanelCard: React.FC<PanelCardProps> = ({
     activePage,
     isOverlay = false,
     isDragging: isDraggingProp = false,
+    isSelected = false,
+    onSelect,
+    copiedSettings,
+    onCopySettings,
+    onPasteSettings,
 }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showAspectMenu, setShowAspectMenu] = useState(false);
@@ -77,9 +87,11 @@ const PanelCard: React.FC<PanelCardProps> = ({
         width: panelWidth,
         minHeight: panelHeight,
         opacity: isDragging ? 0.6 : 1,
-        zIndex: isDragging ? 1000 : 1,
+        zIndex: isDragging ? 1000 : (isSelected ? 100 : 1),
         transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
         transition: isResizing ? 'none' : 'box-shadow 0.2s',
+        outline: isSelected ? '3px solid #60a5fa' : undefined,
+        outlineOffset: isSelected ? '2px' : undefined,
     };
 
     // Load image from IndexedDB if needed
@@ -297,6 +309,12 @@ const PanelCard: React.FC<PanelCardProps> = ({
         <div
             ref={setNodeRef}
             style={style}
+            onClick={(e) => {
+                // Only select if clicking directly on the card (not on inputs, buttons, etc.)
+                if (onSelect && (e.target as HTMLElement).closest('button, input, textarea, [contenteditable]') === null) {
+                    onSelect();
+                }
+            }}
             className={`group rounded-xl border transition-all flex flex-col ${
                 showGutters 
                     ? 'bg-white border-gray-300 shadow-lg hover:shadow-xl' 
@@ -358,6 +376,28 @@ const PanelCard: React.FC<PanelCardProps> = ({
                         )}
                     </div>
                     
+                    {/* Copy settings button */}
+                    {onCopySettings && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onCopySettings(); }}
+                            className={`p-1 transition-colors ${showGutters ? 'text-gray-400 hover:text-blue-500' : 'text-steel-600 hover:text-ember-500'}`}
+                            title="Copy panel settings (aspect ratio, characters)"
+                        >
+                            <Copy size={14} />
+                        </button>
+                    )}
+                    
+                    {/* Paste settings button */}
+                    {onPasteSettings && copiedSettings && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onPasteSettings(); }}
+                            className={`p-1 transition-colors ${showGutters ? 'text-gray-400 hover:text-blue-500' : 'text-steel-600 hover:text-ember-500'}`}
+                            title="Paste panel settings"
+                        >
+                            <ClipboardPaste size={14} />
+                        </button>
+                    )}
+                    
                     <button
                         onClick={handleDelete}
                         className="p-1 text-steel-600 hover:text-red-500 transition-colors"
@@ -409,6 +449,14 @@ const PanelCard: React.FC<PanelCardProps> = ({
                             
                             {/* Image controls toolbar */}
                             <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={handleGenerateImage}
+                                    disabled={isGenerating}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-full transition-colors disabled:opacity-50"
+                                    title="Regenerate image"
+                                >
+                                    <RefreshCw size={12} className={isGenerating ? 'animate-spin' : ''} />
+                                </button>
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-full transition-colors"

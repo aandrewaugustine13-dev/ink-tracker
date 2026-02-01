@@ -4,7 +4,7 @@ import { parseScript, ParseResult, VisualMarker } from '../services/scriptParser
 
 interface Props {
     onClose: () => void;
-    onImport: (result: ParseResult) => void;
+    onImport: (result: ParseResult, scriptText: string) => void;
 }
 
 const MARKER_COLORS: Record<VisualMarker, string> = {
@@ -31,7 +31,7 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
 
     const handleImport = () => {
         if (result?.success) {
-            onImport(result);
+            onImport(result, script);
             onClose();
         }
     };

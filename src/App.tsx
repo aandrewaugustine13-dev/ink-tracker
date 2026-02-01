@@ -16,7 +16,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste } from 'lucide-react';
 
 import {
   Page,
@@ -77,30 +77,90 @@ export default function App() {
   const [zoomEnabled, setZoomEnabled] = useState(false);
   const [showGutters, setShowGutters] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [showScriptPanel, setShowScriptPanel] = useState(false);
+  const [showReadThrough, setShowReadThrough] = useState(false);
+  const [readThroughIndex, setReadThroughIndex] = useState(0);
+  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
+      // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         if (canUndo(stateWithHistory)) {
           dispatch({ type: 'UNDO' });
         }
       }
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         if (canRedo(stateWithHistory)) {
           dispatch({ type: 'REDO' });
         }
       }
+      
+      // Panel navigation with arrow keys
+      if (activePage && activePage.panels.length > 0) {
+        const currentIndex = selectedPanelId 
+          ? activePage.panels.findIndex(p => p.id === selectedPanelId)
+          : -1;
+        
+        // Left/Up arrow: previous panel
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const newIndex = currentIndex <= 0 ? activePage.panels.length - 1 : currentIndex - 1;
+          setSelectedPanelId(activePage.panels[newIndex].id);
+        }
+        // Right/Down arrow: next panel
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const newIndex = currentIndex >= activePage.panels.length - 1 ? 0 : currentIndex + 1;
+          setSelectedPanelId(activePage.panels[newIndex].id);
+        }
+        // Delete: remove selected panel
+        if (e.key === 'Delete' && selectedPanelId) {
+          e.preventDefault();
+          if (confirm('Delete this panel?')) {
+            dispatch({ type: 'DELETE_PANEL', panelId: selectedPanelId, pageId: activePage.id });
+            setSelectedPanelId(null);
+          }
+        }
+        // Escape: deselect
+        if (e.key === 'Escape') {
+          setSelectedPanelId(null);
+          setShowReadThrough(false);
+        }
+      }
+      
+      // Read-through mode navigation
+      if (showReadThrough && activePage) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setReadThroughIndex(i => Math.max(0, i - 1));
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+          e.preventDefault();
+          setReadThroughIndex(i => Math.min(activePage.panels.length - 1, i + 1));
+        }
+        if (e.key === 'Escape') {
+          setShowReadThrough(false);
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stateWithHistory]);
+  }, [stateWithHistory, activePage, selectedPanelId, showReadThrough]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -348,33 +408,39 @@ export default function App() {
     }
   };
 
-  const handleScriptImport = (result: ParseResult) => {
+  const handleScriptImport = (result: ParseResult, scriptText: string) => {
     if (!result.success || !activeProject) return;
     const newPages: Page[] = result.pages.map((parsedPage) => ({
       id: genId(),
-                                                               number: parsedPage.pageNumber,
-                                                               panels: parsedPage.panels.map(parsedPanel => ({
-                                                                 id: genId(),
-                                                                                                             prompt: parsedPanel.description,
-                                                                                                             aspectRatio: parsedPanel.aspectRatio,
-                                                                                                             characterIds: [],
-                                                                                                             textElements: parsedPanel.bubbles.map((bubble, idx) => ({
-                                                                                                               id: genId(),
-                                                                                                                                                                     type: bubble.type === 'dialogue' ? 'dialogue' as const : bubble.type === 'thought' ? 'thought' as const : 'caption' as const,
-                                                                                                                                                                     content: bubble.character ? `${bubble.character}: ${bubble.text}` : bubble.text,
-                                                                                                                                                                     x: 10, y: 10 + (idx * 15), width: 30, height: 10, fontSize: 18, color: '#000000', rotation: 0, tailX: 15, tailY: 10 + (idx * 15) + 15,
-                                                                                                                                                                     tailStyle: bubble.type === 'thought' ? 'cloud' : (bubble.type === 'caption' ? 'none' : 'pointy')
-                                                                                                             })),
-                                                               })),
+      number: parsedPage.pageNumber,
+      panels: parsedPage.panels.map(parsedPanel => ({
+        id: genId(),
+        prompt: parsedPanel.description,
+        aspectRatio: parsedPanel.aspectRatio,
+        characterIds: [],
+        textElements: parsedPanel.bubbles.map((bubble, idx) => ({
+          id: genId(),
+          type: bubble.type === 'dialogue' ? 'dialogue' as const : bubble.type === 'thought' ? 'thought' as const : 'caption' as const,
+          content: bubble.character ? `${bubble.character}: ${bubble.text}` : bubble.text,
+          x: 10, y: 10 + (idx * 15), width: 30, height: 10, fontSize: 18, color: '#000000', rotation: 0, tailX: 15, tailY: 10 + (idx * 15) + 15,
+          tailStyle: bubble.type === 'thought' ? 'cloud' : (bubble.type === 'caption' ? 'none' : 'pointy')
+        })),
+      })),
     }));
     const newCharacters: Character[] = result.characters.map(c => ({
       id: genId(),
-                                                                   name: c.name,
-                                                                   description: c.firstAppearance || `${c.lineCount} lines`,
+      name: c.name,
+      description: c.firstAppearance || `${c.lineCount} lines`,
     }));
-    const newIssue: Issue = { id: genId(), title: `Imported: ${result.pages.length} Pages`, pages: newPages };
+    const newIssue: Issue = { 
+      id: genId(), 
+      title: result.issue?.title ? `${result.issue.title}${result.issue.issueNumber ? ` #${result.issue.issueNumber}` : ''}` : `Imported: ${result.pages.length} Pages`, 
+      pages: newPages,
+      scriptText: scriptText // Store original script for reference
+    };
     dispatch({ type: 'IMPORT_ISSUE', projectId: activeProject.id, issue: newIssue, characters: newCharacters });
     setShowScriptImport(false);
+    setShowScriptPanel(true); // Auto-show script panel after import
   };
 
   const generatePage = async () => {
@@ -574,6 +640,27 @@ export default function App() {
         </div>
       )}
     </div>
+    {/* Script Panel Toggle */}
+    {activeIssue?.scriptText && (
+      <button
+        onClick={() => setShowScriptPanel(!showScriptPanel)}
+        className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showScriptPanel ? 'bg-ember-500 border-ember-400 text-ink-950' : showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        title="Toggle script reference panel"
+      >
+        <FileText size={16} />
+        SCRIPT
+      </button>
+    )}
+    {/* Read-through Mode */}
+    <button
+      onClick={() => { setShowReadThrough(true); setReadThroughIndex(0); }}
+      disabled={!activePage?.panels.length}
+      className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg disabled:opacity-30 ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+      title="Read-through mode (slideshow)"
+    >
+      <Play size={16} />
+      PRESENT
+    </button>
     <button onClick={() => activePage && dispatch({ type: 'ADD_PANEL', pageId: activePage.id })} className={`font-display text-2xl px-10 py-2.5 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
     ADD FRAME
     </button>
@@ -597,6 +684,10 @@ export default function App() {
     activePanelForOverlay={activePanelForOverlay}
     showGutters={showGutters}
     zoomEnabled={zoomEnabled}
+    selectedPanelId={selectedPanelId}
+    setSelectedPanelId={setSelectedPanelId}
+    copiedPanelSettings={copiedPanelSettings}
+    setCopiedPanelSettings={setCopiedPanelSettings}
     />
     </TransformComponent>
     </div>
@@ -619,8 +710,104 @@ export default function App() {
 
     {projectsOpen && <ProjectHub state={state} dispatch={dispatch} onClose={() => setProjectsOpen(false)} />}
     {showScriptImport && <ScriptImportModal onClose={() => setShowScriptImport(false)} onImport={handleScriptImport} />}
+    
+    {/* Side-by-side Script Panel */}
+    {showScriptPanel && activeIssue?.scriptText && (
+      <div className="fixed right-0 top-0 h-full w-[400px] bg-ink-950 border-l border-ink-800 shadow-2xl z-[500] flex flex-col animate-slide-in">
+        <div className="flex items-center justify-between p-4 border-b border-ink-800">
+          <h3 className="font-mono text-xs uppercase tracking-widest text-steel-300">Script Reference</h3>
+          <button onClick={() => setShowScriptPanel(false)} className="p-2 hover:bg-ink-800 rounded-lg text-steel-400 hover:text-steel-200 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <pre className="text-steel-300 text-sm font-mono whitespace-pre-wrap leading-relaxed">{activeIssue.scriptText}</pre>
+        </div>
+      </div>
+    )}
+
+    {/* Read-through / Presentation Mode */}
+    {showReadThrough && activePage && activePage.panels.length > 0 && (
+      <div className="fixed inset-0 bg-black z-[600] flex items-center justify-center">
+        <button 
+          onClick={() => setShowReadThrough(false)} 
+          className="absolute top-6 right-6 p-3 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors"
+          title="Exit read-through (Escape)"
+        >
+          <X size={24} />
+        </button>
+        
+        <button 
+          onClick={() => setReadThroughIndex(i => Math.max(0, i - 1))}
+          disabled={readThroughIndex === 0}
+          className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors disabled:opacity-30"
+          title="Previous (Arrow Left)"
+        >
+          <ChevronLeft size={32} />
+        </button>
+        
+        <button 
+          onClick={() => setReadThroughIndex(i => Math.min(activePage.panels.length - 1, i + 1))}
+          disabled={readThroughIndex >= activePage.panels.length - 1}
+          className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors disabled:opacity-30"
+          title="Next (Arrow Right)"
+        >
+          <ChevronRight size={32} />
+        </button>
+        
+        <div className="max-w-[80vw] max-h-[80vh] flex flex-col items-center">
+          {(() => {
+            const panel = activePage.panels[readThroughIndex];
+            return panel ? (
+              <>
+                <ReadThroughPanel panelId={panel.id} imageUrl={panel.imageUrl} />
+                <div className="mt-6 text-center">
+                  <p className="font-mono text-steel-400 text-sm mb-2">Panel {readThroughIndex + 1} of {activePage.panels.length}</p>
+                  {panel.prompt && <p className="text-steel-500 text-xs max-w-[600px]">{panel.prompt}</p>}
+                </div>
+              </>
+            ) : null;
+          })()}
+        </div>
+        
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+          {activePage.panels.map((_: any, idx: number) => (
+            <button
+              key={idx}
+              onClick={() => setReadThroughIndex(idx)}
+              className={`w-3 h-3 rounded-full transition-all ${idx === readThroughIndex ? 'bg-ember-500 scale-125' : 'bg-ink-700 hover:bg-ink-600'}`}
+            />
+          ))}
+        </div>
+      </div>
+    )}
     </div>
   );
+}
+
+// Helper component for read-through mode to load images
+function ReadThroughPanel({ panelId, imageUrl }: { panelId: string; imageUrl?: string }) {
+  const [image, setImage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (imageUrl) {
+      if (imageUrl.startsWith('data:') || imageUrl.startsWith('http')) {
+        setImage(imageUrl);
+      } else {
+        getImage(imageUrl).then(data => data && setImage(data));
+      }
+    }
+  }, [imageUrl]);
+  
+  if (!image) {
+    return (
+      <div className="w-[600px] h-[400px] bg-ink-900 rounded-2xl flex items-center justify-center">
+        <p className="text-steel-600 font-mono text-sm">No image generated</p>
+      </div>
+    );
+  }
+  
+  return <img src={image} alt="" className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl" />;
 }
 
 /**
@@ -629,7 +816,8 @@ export default function App() {
  */
 function ZoomableCanvas({
   activePage, activeProject, dispatch, sensors, handleDragStart, handleDragEnd,
-  activeId, activePanelForOverlay, showGutters, zoomEnabled
+  activeId, activePanelForOverlay, showGutters, zoomEnabled,
+  selectedPanelId, setSelectedPanelId, copiedPanelSettings, setCopiedPanelSettings
 }: any) {
   const { state: transformState } = useTransformContext() as any;
   const scale = transformState?.scale || 1;
@@ -688,6 +876,22 @@ function ZoomableCanvas({
         showGutters={showGutters}
         activePage={activePage}
         isDragging={activeId === panel.id}
+        isSelected={selectedPanelId === panel.id}
+        onSelect={() => setSelectedPanelId(panel.id)}
+        copiedSettings={copiedPanelSettings}
+        onCopySettings={() => setCopiedPanelSettings({ aspectRatio: panel.aspectRatio, characterIds: panel.characterIds })}
+        onPasteSettings={() => {
+          if (copiedPanelSettings) {
+            dispatch({ 
+              type: 'UPDATE_PANEL', 
+              panelId: panel.id, 
+              updates: { 
+                aspectRatio: copiedPanelSettings.aspectRatio, 
+                characterIds: copiedPanelSettings.characterIds 
+              } 
+            });
+          }
+        }}
         />
       ))}
       </DndContext>
