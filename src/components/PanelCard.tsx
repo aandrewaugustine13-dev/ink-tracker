@@ -222,8 +222,12 @@ const PanelCard: React.FC<PanelCardProps> = ({
         
         try {
             // Build prompt with style and characters
+            // UPDATED: Support custom style prompt
             const styleConfig = ART_STYLES.find(s => s.id === project.style);
-            const stylePrompt = styleConfig?.prompt || '';
+            const stylePrompt = project.style === 'custom' 
+                ? (project.customStylePrompt || '') 
+                : (styleConfig?.prompt || '');
+            
             const activeChars = characters.filter(c => panel.characterIds.includes(c.id));
             // Use buildCharacterPrompt to get full appearance descriptions
             const charSection = activeChars.length > 0 
