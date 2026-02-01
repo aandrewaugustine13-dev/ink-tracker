@@ -1,4 +1,7 @@
-import { Project, Issue, Panel, Character, TextElement } from '../types';
+import { Project, Issue, Panel, Character, TextElement, AspectRatio } from '../types';
+
+// Page template types
+export type PageTemplate = '2x2' | '3x3' | '2x3' | 'manga-right' | 'manga-left' | 'single' | 'double-wide';
 
 export type Action =
 | { type: 'SET_ACTIVE_PROJECT'; id: string }
@@ -25,4 +28,7 @@ export type Action =
 | { type: 'ADD_TEXT_ELEMENT'; panelId: string; element: TextElement }
 | { type: 'UPDATE_TEXT_ELEMENT'; panelId: string; elementId: string; updates: Partial<TextElement> }
 | { type: 'DELETE_TEXT_ELEMENT'; panelId: string; elementId: string }
-| { type: 'IMPORT_ISSUE'; projectId: string; issue: Issue; characters: Character[] };
+| { type: 'IMPORT_ISSUE'; projectId: string; issue: Issue; characters: Character[] }
+| { type: 'APPLY_PAGE_TEMPLATE'; pageId: string; template: PageTemplate }
+| { type: 'UNDO' }
+| { type: 'REDO' };

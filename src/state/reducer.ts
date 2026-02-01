@@ -1,6 +1,7 @@
-import { Action } from './actions';
+import { Action, PageTemplate } from './actions';
 import {
     AppState,
+    AppStateWithHistory,
     Project,
     Issue,
     Page,
@@ -10,6 +11,72 @@ import {
     AspectRatio
 } from '../types';
 import { genId } from '../utils/helpers';
+
+// Page template configurations
+const PAGE_TEMPLATES: Record<PageTemplate, { panels: Array<{ x: number; y: number; width: number; height: number; aspectRatio: AspectRatio }> }> = {
+    '2x2': {
+        panels: [
+            { x: 40, y: 40, width: 360, height: 300, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 40, width: 360, height: 300, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 360, width: 360, height: 300, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 360, width: 360, height: 300, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+    '3x3': {
+        panels: [
+            { x: 40, y: 40, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 300, y: 40, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 560, y: 40, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 40, y: 260, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 300, y: 260, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 560, y: 260, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 40, y: 480, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 300, y: 480, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+            { x: 560, y: 480, width: 240, height: 200, aspectRatio: AspectRatio.STD },
+        ]
+    },
+    '2x3': {
+        panels: [
+            { x: 40, y: 40, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 40, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 260, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 260, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 480, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 480, width: 360, height: 200, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+    'manga-right': {
+        panels: [
+            { x: 420, y: 40, width: 360, height: 280, aspectRatio: AspectRatio.STD },
+            { x: 40, y: 40, width: 360, height: 180, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 240, width: 360, height: 180, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 440, width: 280, height: 220, aspectRatio: AspectRatio.STD },
+            { x: 340, y: 340, width: 440, height: 320, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+    'manga-left': {
+        panels: [
+            { x: 40, y: 40, width: 360, height: 280, aspectRatio: AspectRatio.STD },
+            { x: 420, y: 40, width: 360, height: 180, aspectRatio: AspectRatio.WIDE },
+            { x: 420, y: 240, width: 360, height: 180, aspectRatio: AspectRatio.WIDE },
+            { x: 500, y: 440, width: 280, height: 220, aspectRatio: AspectRatio.STD },
+            { x: 40, y: 340, width: 440, height: 320, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+    'single': {
+        panels: [
+            { x: 40, y: 40, width: 720, height: 600, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+    'double-wide': {
+        panels: [
+            { x: 40, y: 40, width: 740, height: 300, aspectRatio: AspectRatio.WIDE },
+            { x: 40, y: 360, width: 740, height: 300, aspectRatio: AspectRatio.WIDE },
+        ]
+    },
+};
+
+const MAX_HISTORY = 50; // Maximum number of undo steps
 
 export function appReducer(state: AppState, action: Action): AppState {
     let newState = { ...state };
@@ -306,8 +373,126 @@ export function appReducer(state: AppState, action: Action): AppState {
             newState.activeIssueId = action.issue.id;
             newState.activePageId = action.issue.pages[0]?.id || null;
             break;
+
+        case 'APPLY_PAGE_TEMPLATE': {
+            const template = PAGE_TEMPLATES[action.template];
+            if (!template) break;
+            
+            newState.projects = state.projects.map(proj => ({
+                ...proj,
+                issues: proj.issues.map(iss => ({
+                    ...iss,
+                    pages: iss.pages.map(pg => {
+                        if (pg.id !== action.pageId) return pg;
+                        // Create new panels based on template
+                        const newPanels: Panel[] = template.panels.map((config, idx) => ({
+                            id: genId(),
+                            prompt: '',
+                            aspectRatio: config.aspectRatio,
+                            characterIds: [],
+                            textElements: [],
+                            x: config.x,
+                            y: config.y,
+                            width: config.width,
+                            height: config.height,
+                        }));
+                        return { ...pg, panels: newPanels };
+                    })
+                }))
+            }));
+            break;
+        }
+
+        // UNDO and REDO are handled by the history wrapper
+        case 'UNDO':
+        case 'REDO':
+            // These are handled by historyReducer wrapper
+            break;
     }
 
     localStorage.setItem('ink_tracker_data', JSON.stringify(newState));
     return newState;
+}
+
+// Actions that should NOT be recorded in history (navigation, UI state)
+const NON_HISTORICAL_ACTIONS = new Set([
+    'SET_ACTIVE_PROJECT',
+    'SET_ACTIVE_ISSUE', 
+    'SET_ACTIVE_PAGE',
+    'UNDO',
+    'REDO',
+]);
+
+// History-aware reducer wrapper
+export function historyReducer(
+    stateWithHistory: AppStateWithHistory,
+    action: Action
+): AppStateWithHistory {
+    const { past, present, future } = stateWithHistory;
+
+    switch (action.type) {
+        case 'UNDO': {
+            if (past.length === 0) return stateWithHistory;
+            const previous = past[past.length - 1];
+            const newPast = past.slice(0, past.length - 1);
+            return {
+                past: newPast,
+                present: previous,
+                future: [present, ...future],
+            };
+        }
+
+        case 'REDO': {
+            if (future.length === 0) return stateWithHistory;
+            const next = future[0];
+            const newFuture = future.slice(1);
+            return {
+                past: [...past, present],
+                present: next,
+                future: newFuture,
+            };
+        }
+
+        default: {
+            const newPresent = appReducer(present, action);
+            
+            // If state didn't change, don't record in history
+            if (newPresent === present) return stateWithHistory;
+            
+            // Don't record navigation actions in history
+            if (NON_HISTORICAL_ACTIONS.has(action.type)) {
+                return {
+                    past,
+                    present: newPresent,
+                    future,
+                };
+            }
+
+            // Record in history, limiting size
+            const newPast = [...past, present].slice(-MAX_HISTORY);
+            return {
+                past: newPast,
+                present: newPresent,
+                future: [], // Clear future on new action
+            };
+        }
+    }
+}
+
+// Initialize history state
+export function createInitialHistoryState(initialState: AppState): AppStateWithHistory {
+    return {
+        past: [],
+        present: initialState,
+        future: [],
+    };
+}
+
+// Check if undo/redo is available
+export function canUndo(state: AppStateWithHistory): boolean {
+    return state.past.length > 0;
+}
+
+export function canRedo(state: AppStateWithHistory): boolean {
+    return state.future.length > 0;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone } from 'lucide-react';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload } from 'lucide-react';
 import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
@@ -54,6 +54,9 @@ const PanelCard: React.FC<PanelCardProps> = ({
     // Resizing state
     const [isResizing, setIsResizing] = useState(false);
     const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
+    
+    // File upload ref
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Use panel dimensions from state, with fallbacks
     const panelWidth = panel.width || 360;
@@ -232,6 +235,44 @@ const PanelCard: React.FC<PanelCardProps> = ({
         setImageDataUrl(null);
     };
 
+    // Handle image upload
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+        
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Image must be less than 10MB');
+            return;
+        }
+        
+        try {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const dataUrl = event.target?.result as string;
+                if (dataUrl) {
+                    const storedRef = await saveImage(panel.id, dataUrl);
+                    dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { imageUrl: storedRef } });
+                }
+            };
+            reader.readAsDataURL(file);
+        } catch (err: any) {
+            console.error('Image upload failed:', err);
+            alert('Failed to upload image');
+        }
+        
+        // Reset input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     // Add text element (dialogue, thought, caption, phone)
     const handleAddTextElement = (type: TextElementType) => {
         const newElement: TextElement = {
@@ -328,10 +369,26 @@ const PanelCard: React.FC<PanelCardProps> = ({
 
             {/* Scrollable content area */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 scrollbar-thin scrollbar-thumb-ink-700 scrollbar-track-transparent">
+                {/* Hidden file input for image upload */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                />
+
                 {/* Image preview or placeholder */}
                 <div className={`relative rounded-lg overflow-hidden ${aspectConfig?.class || 'aspect-video'} ${
                     showGutters ? 'bg-gray-100 border border-gray-200' : 'bg-ink-950 border border-ink-800'
                 }`}>
+                    {/* Sequence number badge - always visible */}
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="w-8 h-8 rounded-full bg-ember-500 text-white flex items-center justify-center font-bold text-sm shadow-lg">
+                            {index + 1}
+                        </div>
+                    </div>
+
                     {imageDataUrl ? (
                         <>
                             <img 
@@ -352,6 +409,13 @@ const PanelCard: React.FC<PanelCardProps> = ({
                             
                             {/* Image controls toolbar */}
                             <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-1.5 bg-black/60 hover:bg-ember-500 text-white rounded-full transition-colors"
+                                    title="Upload new image"
+                                >
+                                    <Upload size={12} />
+                                </button>
                                 <button
                                     onClick={handleClearImage}
                                     className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors"
@@ -394,8 +458,15 @@ const PanelCard: React.FC<PanelCardProps> = ({
                             </div>
                         </>
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                            <ImageIcon size={32} className={showGutters ? 'text-gray-300' : 'text-ink-800'} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                            <ImageIcon size={32} className={showGutters ? 'text-gray-300' : 'text-steel-600'} />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-ember-500 hover:bg-ember-400 text-white transition-colors"
+                            >
+                                <Upload size={14} />
+                                Upload Image
+                            </button>
                             <span className={`text-[10px] font-mono ${showGutters ? 'text-gray-400' : 'text-ink-700'}`}>
                                 No image yet
                             </span>

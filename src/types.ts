@@ -86,3 +86,10 @@ export interface AppState {
     activeIssueId: string | null;
     activePageId: string | null;
 }
+
+// History-aware state for undo/redo
+export interface AppStateWithHistory {
+    present: AppState;
+    past: AppState[];
+    future: AppState[];
+}

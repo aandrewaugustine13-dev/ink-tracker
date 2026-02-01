@@ -1,4 +1,4 @@
-import React, { useState, useReducer, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useReducer, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -15,15 +15,19 @@ import {
   useTransformContext
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
+import { jsPDF } from 'jspdf';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage } from 'lucide-react';
 
 import {
   Page,
   Issue,
   Character,
-  AspectRatio
+  AspectRatio,
+  AppStateWithHistory
 } from './types';
-import { appReducer } from './state/reducer';
+import { historyReducer, createInitialHistoryState, canUndo, canRedo } from './state/reducer';
 import { createInitialState } from './state/initialState';
+import { Action } from './state/actions';
 import { genId } from './utils/helpers';
 import { getImage, saveImage } from './services/imageStorage';
 import { ART_STYLES, Icons, ASPECT_CONFIGS } from './constants';
@@ -54,7 +58,16 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
 };
 
 export default function App() {
-  const [state, dispatch] = useReducer(appReducer, null, createInitialState);
+  const [stateWithHistory, dispatchWithHistory] = useReducer(
+    historyReducer,
+    null,
+    () => createInitialHistoryState(createInitialState())
+  );
+  
+  // Extract present state and create dispatch wrapper
+  const state = stateWithHistory.present;
+  const dispatch = dispatchWithHistory as React.Dispatch<Action>;
+  
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [batching, setBatching] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -63,10 +76,31 @@ export default function App() {
   const [showScriptImport, setShowScriptImport] = useState(false);
   const [zoomEnabled, setZoomEnabled] = useState(false);
   const [showGutters, setShowGutters] = useState(false);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo(stateWithHistory)) {
+          dispatch({ type: 'UNDO' });
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedo(stateWithHistory)) {
+          dispatch({ type: 'REDO' });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [stateWithHistory]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -174,6 +208,141 @@ export default function App() {
       window.URL.revokeObjectURL(url);
     } catch (e) {
       alert("Export failed: " + e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Export page as PDF
+  const handleExportPagePDF = async () => {
+    if (!activePage) return;
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      // Create PDF in landscape for comic pages
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      let hasContent = false;
+      for (let i = 0; i < activePage.panels.length; i++) {
+        const panel = activePage.panels[i];
+        if (panel.imageUrl) {
+          let dataUrl = panel.imageUrl;
+          if (dataUrl.startsWith('idb://')) {
+            const id = dataUrl.replace('idb://', '');
+            dataUrl = await getImage(id) || '';
+          }
+          if (dataUrl) {
+            if (hasContent) pdf.addPage();
+            hasContent = true;
+            
+            // Add image centered on page
+            const img = new Image();
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.src = dataUrl;
+            });
+            
+            const imgRatio = img.width / img.height;
+            const pageRatio = pageWidth / pageHeight;
+            let imgWidth, imgHeight;
+            
+            if (imgRatio > pageRatio) {
+              imgWidth = pageWidth - 20;
+              imgHeight = imgWidth / imgRatio;
+            } else {
+              imgHeight = pageHeight - 20;
+              imgWidth = imgHeight * imgRatio;
+            }
+            
+            const x = (pageWidth - imgWidth) / 2;
+            const y = (pageHeight - imgHeight) / 2;
+            
+            pdf.addImage(dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            
+            // Add panel number
+            pdf.setFontSize(10);
+            pdf.setTextColor(150);
+            pdf.text(`Panel ${i + 1}`, 10, 10);
+          }
+        }
+      }
+      
+      if (hasContent) {
+        pdf.save(`Page_${activePage.number}.pdf`);
+      } else {
+        alert('No images to export');
+      }
+    } catch (e) {
+      alert("PDF export failed: " + e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Export issue as PDF
+  const handleExportIssuePDF = async () => {
+    if (!activeIssue) return;
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      let hasContent = false;
+      for (const page of activeIssue.pages) {
+        for (let i = 0; i < page.panels.length; i++) {
+          const panel = page.panels[i];
+          if (panel.imageUrl) {
+            let dataUrl = panel.imageUrl;
+            if (dataUrl.startsWith('idb://')) {
+              const id = dataUrl.replace('idb://', '');
+              dataUrl = await getImage(id) || '';
+            }
+            if (dataUrl) {
+              if (hasContent) pdf.addPage();
+              hasContent = true;
+              
+              const img = new Image();
+              await new Promise<void>((resolve) => {
+                img.onload = () => resolve();
+                img.src = dataUrl;
+              });
+              
+              const imgRatio = img.width / img.height;
+              const pageRatio = pageWidth / pageHeight;
+              let imgWidth, imgHeight;
+              
+              if (imgRatio > pageRatio) {
+                imgWidth = pageWidth - 20;
+                imgHeight = imgWidth / imgRatio;
+              } else {
+                imgHeight = pageHeight - 20;
+                imgWidth = imgHeight * imgRatio;
+              }
+              
+              const x = (pageWidth - imgWidth) / 2;
+              const y = (pageHeight - imgHeight) / 2;
+              
+              pdf.addImage(dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+              
+              pdf.setFontSize(10);
+              pdf.setTextColor(150);
+              pdf.text(`Page ${page.number} - Panel ${i + 1}`, 10, 10);
+            }
+          }
+        }
+      }
+      
+      if (hasContent) {
+        pdf.save(`${activeIssue.title.replace(/\s+/g, '_')}.pdf`);
+      } else {
+        alert('No images to export');
+      }
+    } catch (e) {
+      alert("PDF export failed: " + e);
     } finally {
       setExporting(false);
     }
@@ -290,6 +459,34 @@ export default function App() {
     </div>
 
     <div className="flex items-center gap-6">
+    {/* Undo/Redo buttons */}
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => dispatch({ type: 'UNDO' })}
+        disabled={!canUndo(stateWithHistory)}
+        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+          showGutters 
+            ? 'hover:bg-gray-200 text-gray-600' 
+            : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+        }`}
+        title="Undo (Ctrl+Z)"
+      >
+        <Undo2 size={18} />
+      </button>
+      <button
+        onClick={() => dispatch({ type: 'REDO' })}
+        disabled={!canRedo(stateWithHistory)}
+        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+          showGutters 
+            ? 'hover:bg-gray-200 text-gray-600' 
+            : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+        }`}
+        title="Redo (Ctrl+Y)"
+      >
+        <Redo2 size={18} />
+      </button>
+    </div>
+
     <ZoomControls
     zoomEnabled={zoomEnabled}
     setZoomEnabled={setZoomEnabled}
@@ -307,15 +504,76 @@ export default function App() {
     EXPORT
     </button>
     {showExportMenu && (
-      <div className="absolute top-full right-0 mt-2 w-56 bg-ink-900 border border-ink-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in py-1">
-      <button onClick={handleExportPage} className="w-full text-left px-4 py-3 text-xs font-mono text-steel-300 hover:bg-ember-500 hover:text-ink-950 transition-colors uppercase tracking-widest flex items-center gap-3"><span>ZIP Page Images</span></button>
-      <button onClick={handleExportIssue} className="w-full text-left px-4 py-3 text-xs font-mono text-steel-300 hover:bg-ember-500 hover:text-ink-950 transition-colors uppercase tracking-widest flex items-center gap-3"><span>CBZ Complete Issue</span></button>
+      <div className={`absolute top-full right-0 mt-2 w-56 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in py-1 ${showGutters ? 'bg-white border border-gray-300' : 'bg-ink-900 border border-ink-700'}`}>
+      <div className={`px-4 py-2 text-[9px] font-mono uppercase tracking-widest ${showGutters ? 'text-gray-400 border-b border-gray-200' : 'text-steel-600 border-b border-ink-800'}`}>Images</div>
+      <button onClick={handleExportPage} className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors uppercase tracking-widest flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}><FileImage size={14} /><span>ZIP Page Images</span></button>
+      <button onClick={handleExportIssue} className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors uppercase tracking-widest flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}><FileImage size={14} /><span>CBZ Issue</span></button>
+      <div className={`px-4 py-2 text-[9px] font-mono uppercase tracking-widest ${showGutters ? 'text-gray-400 border-y border-gray-200' : 'text-steel-600 border-y border-ink-800'}`}>PDF</div>
+      <button onClick={handleExportPagePDF} className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors uppercase tracking-widest flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}><FileImage size={14} /><span>PDF Page</span></button>
+      <button onClick={handleExportIssuePDF} className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors uppercase tracking-widest flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}><FileImage size={14} /><span>PDF Issue</span></button>
       </div>
     )}
     </div>
     <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-8 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
     {batching ? <Icons.Loader /> : <Icons.Magic />}AUTO-INK
     </button>
+    {/* Page Templates */}
+    <div className="relative">
+      <button
+        onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+        className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        title="Apply page template"
+      >
+        <LayoutGrid size={16} />
+        TEMPLATES
+      </button>
+      {showTemplateMenu && (
+        <div className={`absolute top-full right-0 mt-2 w-48 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in py-1 ${showGutters ? 'bg-white border border-gray-300' : 'bg-ink-900 border border-ink-700'}`}>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: '2x2' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <Grid2X2 size={16} /> 2×2 Grid
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: '3x3' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <Grid3X3 size={16} /> 3×3 Grid
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: '2x3' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <Columns size={16} /> 2×3 Rows
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: 'manga-right' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <LayoutGrid size={16} /> Manga (R→L)
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: 'manga-left' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <LayoutGrid size={16} /> Manga (L→R)
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: 'single' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <Square size={16} /> Single Splash
+          </button>
+          <button 
+            onClick={() => { activePage && dispatch({ type: 'APPLY_PAGE_TEMPLATE', pageId: activePage.id, template: 'double-wide' }); setShowTemplateMenu(false); }}
+            className={`w-full text-left px-4 py-2.5 text-xs font-mono transition-colors flex items-center gap-3 ${showGutters ? 'text-gray-700 hover:bg-gray-100' : 'text-steel-300 hover:bg-ember-500 hover:text-ink-950'}`}
+          >
+            <RectangleHorizontal size={16} /> Double Wide
+          </button>
+        </div>
+      )}
+    </div>
     <button onClick={() => activePage && dispatch({ type: 'ADD_PANEL', pageId: activePage.id })} className={`font-display text-2xl px-10 py-2.5 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
     ADD FRAME
     </button>
