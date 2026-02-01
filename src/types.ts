@@ -9,7 +9,24 @@ export enum AspectRatio {
 export interface Character {
     id: string;
     name: string;
-    description: string;
+    description: string; // Legacy/simple description
+    // Detailed appearance fields
+    appearance?: {
+        age?: string;
+        gender?: string;
+        ethnicity?: string;
+        height?: string;
+        build?: string;
+        hairColor?: string;
+        hairStyle?: string;
+        eyeColor?: string;
+        skinTone?: string;
+        facialFeatures?: string;
+        distinguishingMarks?: string;
+        clothing?: string;
+        accessories?: string;
+        additionalNotes?: string;
+    };
 }
 
 export type TextElementType = 'dialogue' | 'thought' | 'caption' | 'phone';
@@ -43,6 +60,11 @@ export interface Panel {
     referencePanelId?: string;
     referenceStrength?: number;
     title?: string;
+    // Freeform position on canvas
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
 }
 
 export interface Page {
@@ -55,9 +77,10 @@ export interface Issue {
     id: string;
     title: string;
     pages: Page[];
+    scriptText?: string; // Original imported script for reference
 }
 
-export type ImageProvider = 'gemini' | 'fal-flux' | 'replicate-flux' | 'leonardo';
+export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart';
 
 export interface Project {
     id: string;
@@ -65,11 +88,11 @@ export interface Project {
     style: string;
     issueType: 'issue' | 'chapter';
     imageProvider: ImageProvider;
-    togetherApiKey?: string;
-    falApiKey?: string;
-    replicateApiKey?: string;
-    replicateModel?: string;
+    geminiApiKey?: string;
     leonardoApiKey?: string;
+    grokApiKey?: string;
+    falApiKey?: string;
+    seaartApiKey?: string;
     fluxModel?: string;
     issues: Issue[];
     characters: Character[];
@@ -80,4 +103,11 @@ export interface AppState {
     activeProjectId: string | null;
     activeIssueId: string | null;
     activePageId: string | null;
+}
+
+// History-aware state for undo/redo
+export interface AppStateWithHistory {
+    present: AppState;
+    past: AppState[];
+    future: AppState[];
 }

@@ -12,7 +12,9 @@ export const createInitialState = (): AppState => {
                 if (!proj.issueType) proj.issueType = 'issue';
                 if (!proj.imageProvider) proj.imageProvider = 'gemini';
                 if (!proj.fluxModel) proj.fluxModel = 'fal-ai/flux-pro';
-                if (!proj.replicateModel) proj.replicateModel = '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1';
+                // Migrate old provider names
+                if ((proj.imageProvider as string) === 'fal-flux') proj.imageProvider = 'fal';
+                if ((proj.imageProvider as string) === 'replicate-flux') proj.imageProvider = 'gemini';
             proj.issues.forEach(iss => {
                 iss.pages.forEach(pg => {
                     pg.panels.forEach(pan => {
@@ -35,7 +37,6 @@ export const createInitialState = (): AppState => {
         issueType: 'issue',
         imageProvider: 'gemini',
         fluxModel: 'fal-ai/flux-pro',
-        replicateModel: '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1',
         characters: [],
         issues: [
             {

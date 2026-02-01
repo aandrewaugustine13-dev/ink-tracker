@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Project, Character } from '../types';
+import { AppState } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
-import { generateFluxImage as generateReplicateFlux } from '../services/replicateFluxService';
+import { generateImage as generateGeminiImage } from '../services/geminiService';
 import { generateLeonardoImage } from '../services/leonardoService';
+import { generateGrokImage } from '../services/grokService';
+import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
+import { generateSeaArtImage } from '../services/seaartService';
 import { saveImage } from '../services/imageStorage';
 
 interface SidebarProps {
@@ -30,16 +33,20 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     const [sidebarKey, setSidebarKey] = useState('');
 
     useEffect(() => {
-        if (activeProject?.imageProvider === 'fal-flux') {
-            setSidebarKey(activeProject?.falApiKey || '');
-        } else if (activeProject?.imageProvider === 'replicate-flux') {
-            setSidebarKey(activeProject?.replicateApiKey || '');
+        if (activeProject?.imageProvider === 'gemini') {
+            setSidebarKey(activeProject?.geminiApiKey || '');
         } else if (activeProject?.imageProvider === 'leonardo') {
             setSidebarKey(activeProject?.leonardoApiKey || '');
+        } else if (activeProject?.imageProvider === 'grok') {
+            setSidebarKey(activeProject?.grokApiKey || '');
+        } else if (activeProject?.imageProvider === 'fal') {
+            setSidebarKey(activeProject?.falApiKey || '');
+        } else if (activeProject?.imageProvider === 'seaart') {
+            setSidebarKey(activeProject?.seaartApiKey || '');
         } else {
             setSidebarKey('');
         }
-    }, [activeProject?.falApiKey, activeProject?.replicateApiKey, activeProject?.leonardoApiKey, activeProject?.imageProvider]);
+    }, [activeProject?.geminiApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.falApiKey, activeProject?.seaartApiKey, activeProject?.imageProvider]);
 
     const [showCharForm, setShowCharForm] = useState(false);
     const [charName, setCharName] = useState('');
@@ -54,15 +61,15 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
     };
 
-    // Generate only when Replicate Flux is selected
-    const handleReplicateFluxClick = async () => {
-        if (activeProject?.imageProvider !== 'replicate-flux') {
-            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'replicate-flux' } });
+    // Generate with FAL
+    const handleFalClick = async () => {
+        if (activeProject?.imageProvider !== 'fal') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'fal' } });
             return;
         }
 
-        if (!activeProject?.replicateApiKey) {
-            alert("Replicate API key is missing. Enter it above and SET.");
+        if (!activeProject?.falApiKey) {
+            alert("FAL API key is missing. Enter it below and click SET.");
             return;
         }
 
@@ -80,16 +87,16 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
 
         try {
-            const generatedUrl = await generateReplicateFlux(
+            const generatedUrl = await generateFalFlux(
                 prompt,
                 targetPanel.aspectRatio || 'square',
-                activeProject.replicateApiKey,
-                activeProject.replicateModel || '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1',
+                activeProject.falApiKey,
+                activeProject.fluxModel || 'fal-ai/flux-pro',
                 undefined,
                 0.7
             );
 
-            if (!generatedUrl) throw new Error("No image URL returned from Flux");
+            if (!generatedUrl) throw new Error("No image URL returned from FAL");
 
             const storedRef = await saveImage(targetPanel.id, generatedUrl);
             dispatch({
@@ -98,11 +105,11 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                 updates: { imageUrl: storedRef }
             });
 
-            console.log("Flux image generated and saved:", generatedUrl);
+            console.log("FAL image generated and saved:", generatedUrl);
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Check console for details';
-            console.error("Replicate Flux generation failed:", err);
-            alert(`Flux generation failed: ${errorMessage}`);
+            console.error("FAL generation failed:", err);
+            alert(`FAL generation failed: ${errorMessage}`);
         }
     };
 
@@ -159,6 +166,159 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
     };
 
+    // Generate with Gemini
+    const handleGeminiClick = async () => {
+        if (activeProject?.imageProvider !== 'gemini') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'gemini' } });
+            return;
+        }
+
+        if (!activeProject?.geminiApiKey) {
+            alert("Gemini API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateGeminiImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.geminiApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Gemini");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Gemini image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("Gemini generation failed:", err);
+            alert(`Gemini generation failed: ${errorMessage}`);
+        }
+    };
+
+    // Generate with Grok
+    const handleGrokClick = async () => {
+        if (activeProject?.imageProvider !== 'grok') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'grok' } });
+            return;
+        }
+
+        if (!activeProject?.grokApiKey) {
+            alert("Grok (xAI) API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateGrokImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.grokApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from Grok");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("Grok image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("Grok generation failed:", err);
+            alert(`Grok generation failed: ${errorMessage}`);
+        }
+    };
+
+    // Generate with SeaArt
+    const handleSeaArtClick = async () => {
+        if (activeProject?.imageProvider !== 'seaart') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'seaart' } });
+            return;
+        }
+
+        if (!activeProject?.seaartApiKey) {
+            alert("SeaArt API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateSeaArtImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.seaartApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from SeaArt");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("SeaArt image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("SeaArt generation failed:", err);
+            alert(`SeaArt generation failed: ${errorMessage}`);
+        }
+    };
+
     return (
         <aside className="w-72 bg-ink-900 border-r border-ink-700 flex flex-col overflow-hidden z-30">
         <div className="p-6 border-b border-ink-700">
@@ -196,79 +356,114 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         📜 Import Script
         </button>
 
-        <div className="flex flex-col gap-1 mt-2">
-        <div className="flex gap-1">
+        <div className="flex flex-col gap-2 mt-3">
+        <p className="text-[9px] font-mono text-steel-500 uppercase tracking-widest">Image Provider</p>
+        <div className="grid grid-cols-2 gap-1.5">
         <button
-        onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'gemini' } })}
-        className={`flex-1 text-[8px] font-mono py-1 rounded transition-colors ${activeProject?.imageProvider === 'gemini' ? 'bg-ember-500 text-ink-950 font-bold' : 'bg-ink-900 text-steel-600'}`}
+        onClick={handleGeminiClick}
+        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+            activeProject?.imageProvider === 'gemini'
+            ? 'bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+        }`}
         >
         GEMINI
         </button>
         <button
-        onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'fal-flux' } })}
-        className={`flex-1 text-[8px] font-mono py-1 rounded transition-colors ${activeProject?.imageProvider === 'fal-flux' ? 'bg-ember-500 text-ink-950 font-bold' : 'bg-ink-900 text-steel-600'}`}
-        >
-        FAL.AI
-        </button>
-        </div>
-
-        <button
-        onClick={handleReplicateFluxClick}
-        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
-            activeProject?.imageProvider === 'replicate-flux'
-            ? 'bg-purple-700 hover:bg-purple-600 text-white'
-            : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
-        }`}
-        >
-        {activeProject?.imageProvider === 'replicate-flux' ? (activeProject?.replicateApiKey ? 'GENERATE FLUX' : 'ENTER KEY BELOW') : 'REPLICATE FLUX'}
-        </button>
-
-        <button
         onClick={handleLeonardoClick}
-        className={`w-full text-[9px] font-mono py-2 rounded font-bold uppercase tracking-widest transition-colors ${
+        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
             activeProject?.imageProvider === 'leonardo'
-            ? 'bg-orange-600 hover:bg-orange-500 text-white'
-            : 'bg-ink-800 text-steel-600 hover:bg-ink-700'
+            ? 'bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-lg shadow-orange-600/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
         }`}
         >
-        {activeProject?.imageProvider === 'leonardo' ? (activeProject?.leonardoApiKey ? 'GENERATE LEONARDO' : 'ENTER KEY BELOW') : 'LEONARDO PHOENIX'}
+        LEONARDO
+        </button>
+        <button
+        onClick={handleGrokClick}
+        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+            activeProject?.imageProvider === 'grok'
+            ? 'bg-gray-600 hover:bg-gray-500 text-white font-bold shadow-lg shadow-gray-600/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+        }`}
+        title="xAI Grok - Image generation may be limited"
+        >
+        GROK
+        </button>
+        <button
+        onClick={handleFalClick}
+        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+            activeProject?.imageProvider === 'fal'
+            ? 'bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold shadow-lg shadow-ember-500/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+        }`}
+        >
+        FAL
+        </button>
+        </div>
+        <button
+        onClick={handleSeaArtClick}
+        className={`w-full text-[9px] font-mono py-2 rounded-lg transition-all mt-1.5 ${
+            activeProject?.imageProvider === 'seaart'
+            ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
+            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+        }`}
+        title="SeaArt - Creative image generation"
+        >
+        SEAART
         </button>
         </div>
 
-        {(activeProject?.imageProvider === 'fal-flux' || activeProject?.imageProvider === 'replicate-flux' || activeProject?.imageProvider === 'leonardo') && (
-            <div className="mt-1 pt-2 border-t border-ink-700 space-y-2">
-            <label className="text-[8px] font-mono text-steel-500 uppercase flex justify-between">
-            <span>{activeProject?.imageProvider === 'fal-flux' ? 'fal.ai' : activeProject?.imageProvider === 'replicate-flux' ? 'Replicate' : 'Leonardo'} Key</span>
-            {!sidebarKey && <span className="text-red-500 font-bold">MISSING!</span>}
-            </label>
-            <div className="flex gap-1">
-            <input
-            type="password"
-            placeholder="Enter Key..."
-            value={sidebarKey}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
-            className="flex-1 bg-ink-950 border border-ink-700 rounded px-2 py-1 text-[9px] text-steel-300 focus:border-ember-500 outline-none"
-            />
-            <button
-            onClick={() => {
-                if (sidebarKey.trim()) {
-                    if (activeProject?.imageProvider === 'fal-flux') {
-                        dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    } else if (activeProject?.imageProvider === 'replicate-flux') {
-                        dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    } else if (activeProject?.imageProvider === 'leonardo') {
-                        dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                    }
-                    alert('Key saved!');
+        {/* API Key Input */}
+        <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
+        <label className="text-[9px] font-mono text-steel-500 uppercase flex justify-between items-center">
+        <span>
+        {activeProject?.imageProvider === 'gemini' ? 'Gemini' :
+         activeProject?.imageProvider === 'leonardo' ? 'Leonardo' :
+         activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
+         activeProject?.imageProvider === 'fal' ? 'FAL' :
+         activeProject?.imageProvider === 'seaart' ? 'SeaArt' : 'API'} Key
+        </span>
+        {!sidebarKey && <span className="text-red-500 font-bold animate-pulse text-[8px]">REQUIRED</span>}
+        </label>
+        <div className="flex gap-1">
+        <input
+        type="password"
+        placeholder="Enter API Key..."
+        value={sidebarKey}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
+        className="flex-1 bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-[10px] text-steel-300 focus:border-ember-500 outline-none"
+        />
+        <button
+        onClick={() => {
+            if (sidebarKey.trim()) {
+                if (activeProject?.imageProvider === 'gemini') {
+                    dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'leonardo') {
+                    dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'grok') {
+                    dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'fal') {
+                    dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                } else if (activeProject?.imageProvider === 'seaart') {
+                    dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                 }
-            }}
-            className="bg-ink-700 hover:bg-ember-500 text-steel-400 hover:text-ink-950 px-2 rounded text-[8px] transition-colors font-bold"
-            >
-            SET
-            </button>
-            </div>
-            </div>
-        )}
+                alert('API key saved!');
+            }
+        }}
+        className="bg-ember-500 hover:bg-ember-400 text-ink-950 px-4 rounded-lg text-[9px] transition-colors font-bold"
+        >
+        SET
+        </button>
+        </div>
+        <p className="text-[8px] text-steel-600 italic">
+        {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
+         activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
+         activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
+         activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' :
+         activeProject?.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
+        </p>
+        </div>
         </div>
         </div>
 

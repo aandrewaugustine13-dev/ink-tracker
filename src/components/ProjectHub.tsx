@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppState, Project } from '../types';
+import { AppState } from '../types';
 import { Action } from '../state/actions';
 import { Icons } from '../constants';
 
@@ -11,16 +11,20 @@ interface ProjectHubProps {
 
 const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [localApiKey, setLocalApiKey] = useState<string>('');
-    const [localReplicateKey, setLocalReplicateKey] = useState<string>('');
-    const [localReplicateModel, setLocalReplicateModel] = useState<string>('');
+    const [localGeminiKey, setLocalGeminiKey] = useState<string>('');
+    const [localLeonardoKey, setLocalLeonardoKey] = useState<string>('');
+    const [localGrokKey, setLocalGrokKey] = useState<string>('');
+    const [localFalKey, setLocalFalKey] = useState<string>('');
+    const [localSeaArtKey, setLocalSeaArtKey] = useState<string>('');
 
     useEffect(() => {
         if (editingId) {
             const proj = state.projects.find(p => p.id === editingId);
-            setLocalApiKey(proj?.falApiKey || '');
-            setLocalReplicateKey(proj?.replicateApiKey || '');
-            setLocalReplicateModel(proj?.replicateModel || '776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1');
+            setLocalGeminiKey(proj?.geminiApiKey || '');
+            setLocalLeonardoKey(proj?.leonardoApiKey || '');
+            setLocalGrokKey(proj?.grokApiKey || '');
+            setLocalFalKey(proj?.falApiKey || '');
+            setLocalSeaArtKey(proj?.seaartApiKey || '');
         }
     }, [editingId, state.projects]);
 
@@ -73,7 +77,14 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
             </div>
 
             <div className="mt-6 flex justify-between items-center relative z-10">
-            <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-ink-800 text-steel-600 border border-ink-700 uppercase">
+            <span className={`text-[10px] font-mono px-3 py-1 rounded-full border uppercase ${
+                proj.imageProvider === 'gemini' ? 'bg-blue-600/20 text-blue-400 border-blue-600/50' :
+                proj.imageProvider === 'leonardo' ? 'bg-orange-600/20 text-orange-400 border-orange-600/50' :
+                proj.imageProvider === 'grok' ? 'bg-gray-600/20 text-gray-400 border-gray-600/50' :
+                proj.imageProvider === 'fal' ? 'bg-ember-500/20 text-ember-400 border-ember-500/50' :
+                proj.imageProvider === 'seaart' ? 'bg-pink-600/20 text-pink-400 border-pink-600/50' :
+                'bg-ink-800 text-steel-600 border-ink-700'
+            }`}>
             {proj.imageProvider}
             </span>
             <button
@@ -90,117 +101,102 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
             {editingId === proj.id && (
                 <div onClick={e => e.stopPropagation()} className="mt-6 p-4 bg-ink-950 rounded-xl border border-ink-700 space-y-4 animate-fade-in shadow-2xl">
                 <div>
-                <label className="text-[9px] font-mono text-steel-500 uppercase block mb-1">Image Engine</label>
-                <div className="flex flex-col gap-1">
-                <div className="flex gap-1">
+                <label className="text-[9px] font-mono text-steel-500 uppercase block mb-2">Image Provider</label>
+                <div className="grid grid-cols-2 gap-1.5">
                 <button
                 onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'gemini' } })}
-                className={`flex-1 text-[10px] font-mono py-2 rounded border transition-all ${proj.imageProvider === 'gemini' ? 'bg-ember-500 text-ink-950 border-ember-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700'}`}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'gemini' ? 'bg-blue-600 text-white border-blue-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-blue-600/50'}`}
                 >
                 GEMINI
                 </button>
                 <button
-                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'fal-flux' } })}
-                className={`flex-1 text-[10px] font-mono py-2 rounded border transition-all ${proj.imageProvider === 'fal-flux' ? 'bg-ember-500 text-ink-950 border-ember-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700'}`}
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'leonardo' } })}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'leonardo' ? 'bg-orange-600 text-white border-orange-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-orange-600/50'}`}
                 >
-                FAL.AI
+                LEONARDO
+                </button>
+                <button
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'grok' } })}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'grok' ? 'bg-gray-600 text-white border-gray-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-gray-600/50'}`}
+                >
+                GROK
+                </button>
+                <button
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'fal' } })}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'fal' ? 'bg-ember-500 text-ink-950 border-ember-400 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-ember-500/50'}`}
+                >
+                FAL
                 </button>
                 </div>
                 <button
-                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'replicate-flux' } })}
-                className={`w-full text-[10px] font-mono py-2 rounded border transition-all ${proj.imageProvider === 'replicate-flux' ? 'bg-ember-500 text-ink-950 border-ember-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700'}`}
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'seaart' } })}
+                className={`w-full text-[10px] font-mono py-2 rounded-lg border transition-all mt-1.5 ${proj.imageProvider === 'seaart' ? 'bg-pink-600 text-white border-pink-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-pink-600/50'}`}
                 >
-                REPLICATE
+                SEAART
                 </button>
                 </div>
+
+                {/* API Key input for selected provider */}
+                <div className="mt-3 p-3 bg-ink-800 rounded-lg border border-ink-700 space-y-2">
+                <label className="block text-[9px] font-mono text-steel-400 uppercase mb-1">
+                {proj.imageProvider === 'gemini' ? 'Gemini' :
+                 proj.imageProvider === 'leonardo' ? 'Leonardo' :
+                 proj.imageProvider === 'grok' ? 'Grok (xAI)' :
+                 proj.imageProvider === 'fal' ? 'FAL' :
+                 proj.imageProvider === 'seaart' ? 'SeaArt' : ''} API Key
+                </label>
+                <div className="flex gap-2">
+                <input
+                type="password"
+                placeholder="Enter API key..."
+                value={
+                    proj.imageProvider === 'gemini' ? localGeminiKey :
+                    proj.imageProvider === 'leonardo' ? localLeonardoKey :
+                    proj.imageProvider === 'grok' ? localGrokKey :
+                    proj.imageProvider === 'fal' ? localFalKey :
+                    proj.imageProvider === 'seaart' ? localSeaArtKey : ''
+                }
+                onChange={e => {
+                    if (proj.imageProvider === 'gemini') setLocalGeminiKey(e.target.value);
+                    else if (proj.imageProvider === 'leonardo') setLocalLeonardoKey(e.target.value);
+                    else if (proj.imageProvider === 'grok') setLocalGrokKey(e.target.value);
+                    else if (proj.imageProvider === 'fal') setLocalFalKey(e.target.value);
+                    else if (proj.imageProvider === 'seaart') setLocalSeaArtKey(e.target.value);
+                }}
+                className="flex-1 bg-ink-900 border border-ink-700 rounded-lg px-3 py-2 text-xs text-steel-300 font-mono outline-none focus:border-ember-500"
+                />
+                <button
+                onClick={() => {
+                    if (proj.imageProvider === 'gemini' && localGeminiKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: proj.id, apiKey: localGeminiKey.trim() });
+                        alert('Gemini Key saved!');
+                    } else if (proj.imageProvider === 'leonardo' && localLeonardoKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: proj.id, apiKey: localLeonardoKey.trim() });
+                        alert('Leonardo Key saved!');
+                    } else if (proj.imageProvider === 'grok' && localGrokKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: proj.id, apiKey: localGrokKey.trim() });
+                        alert('Grok Key saved!');
+                    } else if (proj.imageProvider === 'fal' && localFalKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: proj.id, apiKey: localFalKey.trim() });
+                        alert('FAL Key saved!');
+                    } else if (proj.imageProvider === 'seaart' && localSeaArtKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: proj.id, apiKey: localSeaArtKey.trim() });
+                        alert('SeaArt Key saved!');
+                    }
+                }}
+                className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-lg uppercase text-[9px] transition-colors"
+                >
+                Save
+                </button>
                 </div>
-
-                {proj.imageProvider === 'fal-flux' && (
-                    <div className="mt-4 p-3 bg-ink-800 rounded border border-ink-700 space-y-3">
-                    <div>
-                    <label className="block text-[9px] font-mono text-steel-400 uppercase mb-1.5">fal.ai API Key</label>
-                    <div className="flex gap-2">
-                    <input
-                    type="password"
-                    placeholder="key-xxxx..."
-                    value={localApiKey}
-                    onChange={e => setLocalApiKey(e.target.value)}
-                    className="flex-1 bg-ink-900 border border-ink-700 rounded px-2 py-1.5 text-xs text-steel-300 font-mono outline-none focus:border-ember-500"
-                    />
-                    <button
-                    onClick={() => {
-                        if (localApiKey.trim()) {
-                            dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: proj.id, apiKey: localApiKey.trim() });
-                            alert('fal.ai Key saved!');
-                        }
-                    }}
-                    disabled={!localApiKey.trim()}
-                    className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-3 py-1 rounded uppercase text-[9px] disabled:opacity-50"
-                    >
-                    Save
-                    </button>
-                    </div>
-                    </div>
-                    </div>
-                )}
-
-                {proj.imageProvider === 'replicate-flux' && (
-                    <div className="mt-4 p-3 bg-ink-800 rounded border border-ink-700 space-y-3">
-                    <div>
-                    <label className="block text-[9px] font-mono text-steel-400 uppercase mb-1.5">Replicate API Key</label>
-                    <div className="flex gap-2">
-                    <input
-                    type="password"
-                    placeholder="r8_xxxx..."
-                    value={localReplicateKey}
-                    onChange={e => setLocalReplicateKey(e.target.value)}
-                    className="flex-1 bg-ink-900 border border-ink-700 rounded px-2 py-1.5 text-xs text-steel-300 font-mono outline-none focus:border-ember-500"
-                    />
-                    <button
-                    onClick={() => {
-                        if (localReplicateKey.trim()) {
-                            dispatch({ type: 'UPDATE_PROJECT_REPLICATE_KEY', projectId: proj.id, apiKey: localReplicateKey.trim() });
-                            alert('Replicate Key saved!');
-                        }
-                    }}
-                    disabled={!localReplicateKey.trim()}
-                    className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-3 py-1 rounded uppercase text-[9px] disabled:opacity-50"
-                    >
-                    Save
-                    </button>
-                    </div>
-                    </div>
-                    <div>
-                    <label className="block text-[9px] font-mono text-steel-400 uppercase mb-1.5">Model Version</label>
-                    <div className="flex flex-col gap-2">
-                    <input
-                    type="text"
-                    placeholder="version hash..."
-                    value={localReplicateModel}
-                    onChange={e => setLocalReplicateModel(e.target.value)}
-                    className="w-full bg-ink-900 border border-ink-700 rounded px-2 py-1.5 text-[10px] text-steel-300 font-mono outline-none focus:border-ember-500"
-                    />
-                    <div className="flex gap-1.5">
-                    <button
-                    onClick={() => {
-                        dispatch({ type: 'UPDATE_PROJECT_REPLICATE_MODEL', projectId: proj.id, model: localReplicateModel.trim() });
-                        alert('Model updated!');
-                    }}
-                    className="bg-ink-700 hover:bg-ember-500 text-steel-300 hover:text-ink-950 font-bold px-3 py-1.5 rounded uppercase text-[8px] flex-1 transition-colors"
-                    >
-                    Update Model
-                    </button>
-                    <button
-                    onClick={() => setLocalReplicateModel('776402431718227633f81525a7a72d1a37c4f42065840d21e89f81f1856956f1')}
-                    className="bg-ink-900 border border-ink-700 text-steel-500 px-2 py-1.5 rounded uppercase text-[8px] hover:text-steel-300"
-                    >
-                    Reset
-                    </button>
-                    </div>
-                    </div>
-                    </div>
-                    </div>
-                )}
+                <p className="text-[8px] text-steel-600 italic mt-1">
+                {proj.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
+                 proj.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
+                 proj.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
+                 proj.imageProvider === 'fal' ? 'Get key from fal.ai' :
+                 proj.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
+                </p>
+                </div>
                 </div>
             )}
             </div>

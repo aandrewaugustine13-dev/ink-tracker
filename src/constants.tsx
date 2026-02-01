@@ -29,7 +29,7 @@ export const ART_STYLES = [
 { id: 'modern-alt', name: 'Modern Indie Alt', prompt: 'modern indie alt-comic style, loose sketchy line work, contemporary emotional storytelling, minimal shading, Adrian Tomine vibe' },
 
 // Experimental & Realistic
-{ id: 'erotic-realism', name: 'Photorealistic Erotic', prompt: 'ultra photorealistic sensual erotic portrait, detailed realistic skin texture and anatomy, soft intimate lighting, cinematic chiaroscuro, tasteful artistic sensual pose, high detail masterpiece, no cartoon elements' },
+{ id: 'erotic-realism', name: 'Photorealistic', prompt: 'ultra photorealistic sensual erotic portrait, detailed realistic skin texture and anatomy, soft intimate lighting, cinematic chiaroscuro, tasteful artistic sensual pose, high detail masterpiece, no cartoon elements' },
 { id: 'pulp-adventure', name: 'Retro Pulp Adventure', prompt: 'retro 1930s pulp magazine cover art, dynamic adventure serials, warm vintage palette, hand-painted texture, dramatic heroic action' },
 { id: 'cyberpunk-noir', name: 'Western Cyberpunk Noir', prompt: 'Western cyberpunk neon-noir comic art, intricate mechanical details, glowing accents, gritty high-tech low-life aesthetic, intense lighting' }
 ];
