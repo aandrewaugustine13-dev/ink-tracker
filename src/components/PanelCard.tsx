@@ -15,6 +15,60 @@ import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 import { generateSeaArtImage } from '../services/seaartService';
 
+// Helper to get a short appearance summary for a character
+function getAppearanceSummary(char: Character): string {
+    if (!char.appearance) return char.description || '';
+    
+    const parts: string[] = [];
+    const a = char.appearance;
+    
+    if (a.build) parts.push(a.build);
+    if (a.hairColor) parts.push(`${a.hairColor} hair`);
+    if (a.eyeColor) parts.push(`${a.eyeColor} eyes`);
+    if (a.distinguishingMarks) parts.push(a.distinguishingMarks);
+    
+    if (parts.length === 0 && char.description) return char.description;
+    return parts.join(', ');
+}
+
+// Helper to build a full appearance description for image generation
+function buildCharacterPrompt(char: Character): string {
+    const parts: string[] = [char.name];
+    
+    if (char.appearance) {
+        const a = char.appearance;
+        const desc: string[] = [];
+        
+        if (a.age) desc.push(a.age);
+        if (a.gender) desc.push(a.gender);
+        if (a.ethnicity) desc.push(a.ethnicity);
+        if (a.height) desc.push(a.height);
+        if (a.build) desc.push(a.build);
+        if (a.skinTone) desc.push(`${a.skinTone} skin`);
+        if (a.hairColor && a.hairStyle) {
+            desc.push(`${a.hairColor} ${a.hairStyle} hair`);
+        } else if (a.hairColor) {
+            desc.push(`${a.hairColor} hair`);
+        } else if (a.hairStyle) {
+            desc.push(`${a.hairStyle} hair`);
+        }
+        if (a.eyeColor) desc.push(`${a.eyeColor} eyes`);
+        if (a.facialFeatures) desc.push(a.facialFeatures);
+        if (a.distinguishingMarks) desc.push(a.distinguishingMarks);
+        if (a.clothing) desc.push(`wearing ${a.clothing}`);
+        if (a.accessories) desc.push(`with ${a.accessories}`);
+        if (a.additionalNotes) desc.push(a.additionalNotes);
+        
+        if (desc.length > 0) {
+            parts.push(`(${desc.join(', ')})`);
+        }
+    } else if (char.description) {
+        parts.push(`(${char.description})`);
+    }
+    
+    return parts.join(' ');
+}
+
 interface PanelCardProps {
     panel: Panel;
     pageId: string;
@@ -171,8 +225,9 @@ const PanelCard: React.FC<PanelCardProps> = ({
             const styleConfig = ART_STYLES.find(s => s.id === project.style);
             const stylePrompt = styleConfig?.prompt || '';
             const activeChars = characters.filter(c => panel.characterIds.includes(c.id));
+            // Use buildCharacterPrompt to get full appearance descriptions
             const charSection = activeChars.length > 0 
-                ? `Characters: ${activeChars.map(c => `${c.name} (${c.description})`).join(', ')}.` 
+                ? `Characters: ${activeChars.map(c => buildCharacterPrompt(c)).join('; ')}.` 
                 : '';
             const config = ASPECT_CONFIGS[panel.aspectRatio];
             
@@ -542,52 +597,89 @@ const PanelCard: React.FC<PanelCardProps> = ({
                 />
 
                 {/* Character selector */}
-                {characters.length > 0 && (
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowCharMenu(!showCharMenu)}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between transition-colors ${
-                                showGutters 
-                                    ? 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100' 
-                                    : 'bg-ink-950 border border-ink-800 text-steel-500 hover:bg-ink-900'
-                            }`}
-                        >
-                            <span>
-                                {selectedChars.length > 0 
-                                    ? selectedChars.map(c => c.name).join(', ')
-                                    : 'Select characters...'}
-                            </span>
-                            <ChevronDown size={14} />
-                        </button>
-                        {showCharMenu && (
-                            <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-lg shadow-xl border py-1 max-h-40 overflow-y-auto ${
-                                showGutters ? 'bg-white border-gray-200' : 'bg-ink-900 border-ink-700'
-                            }`}>
-                                {characters.map(char => (
-                                    <button
-                                        key={char.id}
-                                        onClick={() => toggleCharacter(char.id)}
-                                        className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
-                                            panel.characterIds.includes(char.id)
-                                                ? 'bg-ember-500/20 text-ember-500'
-                                                : showGutters 
-                                                    ? 'text-gray-600 hover:bg-gray-100' 
-                                                    : 'text-steel-400 hover:bg-ink-800'
-                                        }`}
-                                    >
-                                        <span className={`w-3 h-3 rounded border ${
-                                            panel.characterIds.includes(char.id) 
-                                                ? 'bg-ember-500 border-ember-500' 
-                                                : showGutters ? 'border-gray-300' : 'border-ink-600'
-                                        }`} />
-                                        <span className="font-bold">{char.name}</span>
-                                        <span className="opacity-60 text-[10px] truncate">{char.description}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                <div className="relative">
+                    <label className={`block text-[10px] font-mono uppercase mb-1 ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                        Characters in this panel
+                    </label>
+                    {characters.length > 0 ? (
+                        <>
+                            <button
+                                onClick={() => setShowCharMenu(!showCharMenu)}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between transition-colors ${
+                                    selectedChars.length > 0
+                                        ? 'bg-ember-500/10 border border-ember-500/30 text-ember-400'
+                                        : showGutters 
+                                            ? 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100' 
+                                            : 'bg-ink-950 border border-ink-800 text-steel-500 hover:bg-ink-900'
+                                }`}
+                            >
+                                <span>
+                                    {selectedChars.length > 0 
+                                        ? selectedChars.map(c => c.name).join(', ')
+                                        : 'Select characters...'}
+                                </span>
+                                <ChevronDown size={14} />
+                            </button>
+                            {showCharMenu && (
+                                <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-lg shadow-xl border py-1 max-h-48 overflow-y-auto ${
+                                    showGutters ? 'bg-white border-gray-200' : 'bg-ink-900 border-ink-700'
+                                }`}>
+                                    {characters.map(char => {
+                                        const isSelected = panel.characterIds.includes(char.id);
+                                        const appearanceSummary = getAppearanceSummary(char);
+                                        return (
+                                            <button
+                                                key={char.id}
+                                                onClick={() => toggleCharacter(char.id)}
+                                                className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                                                    isSelected
+                                                        ? 'bg-ember-500/20'
+                                                        : showGutters 
+                                                            ? 'hover:bg-gray-100' 
+                                                            : 'hover:bg-ink-800'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-3 h-3 rounded border flex-shrink-0 ${
+                                                        isSelected 
+                                                            ? 'bg-ember-500 border-ember-500' 
+                                                            : showGutters ? 'border-gray-300' : 'border-ink-600'
+                                                    }`} />
+                                                    <span className={`font-bold ${isSelected ? 'text-ember-400' : showGutters ? 'text-gray-700' : 'text-steel-300'}`}>
+                                                        {char.name}
+                                                    </span>
+                                                </div>
+                                                {appearanceSummary && (
+                                                    <p className={`mt-1 ml-5 text-[10px] leading-tight ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                                                        {appearanceSummary}
+                                                    </p>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {/* Show selected character summaries */}
+                            {selectedChars.length > 0 && (
+                                <div className={`mt-2 space-y-1 text-[10px] ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                                    {selectedChars.map(char => {
+                                        const summary = getAppearanceSummary(char);
+                                        return summary ? (
+                                            <div key={char.id} className="flex gap-1">
+                                                <span className="font-bold text-ember-500">{char.name}:</span>
+                                                <span className="truncate">{summary}</span>
+                                            </div>
+                                        ) : null;
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <p className={`text-xs ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>
+                            No characters defined. Use the CHARACTERS button to add some.
+                        </p>
+                    )}
+                </div>
 
                 {/* Reference Panel Selector - for consistency between panels */}
                 {activePage.panels.length > 1 && (

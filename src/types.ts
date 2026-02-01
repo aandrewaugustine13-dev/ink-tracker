@@ -9,7 +9,24 @@ export enum AspectRatio {
 export interface Character {
     id: string;
     name: string;
-    description: string;
+    description: string; // Legacy/simple description
+    // Detailed appearance fields
+    appearance?: {
+        age?: string;
+        gender?: string;
+        ethnicity?: string;
+        height?: string;
+        build?: string;
+        hairColor?: string;
+        hairStyle?: string;
+        eyeColor?: string;
+        skinTone?: string;
+        facialFeatures?: string;
+        distinguishingMarks?: string;
+        clothing?: string;
+        accessories?: string;
+        additionalNotes?: string;
+    };
 }
 
 export type TextElementType = 'dialogue' | 'thought' | 'caption' | 'phone';

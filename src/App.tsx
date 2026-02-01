@@ -16,7 +16,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users } from 'lucide-react';
 
 import {
   Page,
@@ -38,12 +38,53 @@ import Sidebar from './components/Sidebar';
 import PanelCard from './components/PanelCard';
 import ZoomControls from './components/ZoomControls';
 import ProjectHub from './components/ProjectHub';
+import CharacterBank from './components/CharacterBank';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
 import { generateGrokImage } from './services/grokService';
 import { generateFluxImage as generateFalFlux } from './services/falFluxService';
 import { generateSeaArtImage } from './services/seaartService';
+
+/**
+ * Helper to build a full appearance description for image generation
+ */
+function buildCharacterPrompt(char: Character): string {
+  const parts: string[] = [char.name];
+  
+  if (char.appearance) {
+    const a = char.appearance;
+    const desc: string[] = [];
+    
+    if (a.age) desc.push(a.age);
+    if (a.gender) desc.push(a.gender);
+    if (a.ethnicity) desc.push(a.ethnicity);
+    if (a.height) desc.push(a.height);
+    if (a.build) desc.push(a.build);
+    if (a.skinTone) desc.push(`${a.skinTone} skin`);
+    if (a.hairColor && a.hairStyle) {
+      desc.push(`${a.hairColor} ${a.hairStyle} hair`);
+    } else if (a.hairColor) {
+      desc.push(`${a.hairColor} hair`);
+    } else if (a.hairStyle) {
+      desc.push(`${a.hairStyle} hair`);
+    }
+    if (a.eyeColor) desc.push(`${a.eyeColor} eyes`);
+    if (a.facialFeatures) desc.push(a.facialFeatures);
+    if (a.distinguishingMarks) desc.push(a.distinguishingMarks);
+    if (a.clothing) desc.push(`wearing ${a.clothing}`);
+    if (a.accessories) desc.push(`with ${a.accessories}`);
+    if (a.additionalNotes) desc.push(a.additionalNotes);
+    
+    if (desc.length > 0) {
+      parts.push(`(${desc.join(', ')})`);
+    }
+  } else if (char.description) {
+    parts.push(`(${char.description})`);
+  }
+  
+  return parts.join(' ');
+}
 
 /**
  * Custom modifier for dnd-kit to handle the scale factor from react-zoom-pan-pinch.
@@ -82,6 +123,7 @@ export default function App() {
   const [readThroughIndex, setReadThroughIndex] = useState(0);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
+  const [showCharacterBank, setShowCharacterBank] = useState(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
@@ -453,7 +495,8 @@ export default function App() {
         const styleConfig = ART_STYLES.find(s => s.id === activeProject?.style);
         const stylePrompt = styleConfig?.prompt || '';
         const activeChars = activeProject?.characters.filter(c => panel.characterIds.includes(c.id)) || [];
-        const charSection = activeChars.length > 0 ? `Characters: ${activeChars.map(c => c.name).join(', ')}.` : '';
+        // Use buildCharacterPrompt for full appearance descriptions
+        const charSection = activeChars.length > 0 ? `Characters: ${activeChars.map(c => buildCharacterPrompt(c)).join('; ')}.` : '';
         const config = ASPECT_CONFIGS[panel.aspectRatio];
         let initImage: string | undefined;
         if (panel.referencePanelId) {
@@ -651,6 +694,15 @@ export default function App() {
         SCRIPT
       </button>
     )}
+    {/* Character Bank */}
+    <button
+      onClick={() => setShowCharacterBank(true)}
+      className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+      title="Manage characters"
+    >
+      <Users size={16} />
+      CHARACTERS
+    </button>
     {/* Read-through Mode */}
     <button
       onClick={() => { setShowReadThrough(true); setReadThroughIndex(0); }}
@@ -710,6 +762,13 @@ export default function App() {
 
     {projectsOpen && <ProjectHub state={state} dispatch={dispatch} onClose={() => setProjectsOpen(false)} />}
     {showScriptImport && <ScriptImportModal onClose={() => setShowScriptImport(false)} onImport={handleScriptImport} />}
+    {showCharacterBank && activeProject && (
+      <CharacterBank 
+        characters={activeProject.characters} 
+        dispatch={dispatch} 
+        onClose={() => setShowCharacterBank(false)} 
+      />
+    )}
     
     {/* Side-by-side Script Panel */}
     {showScriptPanel && activeIssue?.scriptText && (

@@ -273,7 +273,24 @@ export function appReducer(state: AppState, action: Action): AppState {
                 if (proj.id !== state.activeProjectId) return proj;
                 return {
                     ...proj,
-                    characters: [...proj.characters, { id: genId(), name: action.name, description: action.description }]
+                    characters: [...proj.characters, { 
+                        id: genId(), 
+                        name: action.name, 
+                        description: action.description,
+                        appearance: action.appearance
+                    }]
+                };
+            });
+            break;
+
+        case 'UPDATE_CHARACTER':
+            newState.projects = state.projects.map(proj => {
+                if (proj.id !== state.activeProjectId) return proj;
+                return {
+                    ...proj,
+                    characters: proj.characters.map(c => 
+                        c.id === action.id ? { ...c, ...action.updates } : c
+                    )
                 };
             });
             break;
