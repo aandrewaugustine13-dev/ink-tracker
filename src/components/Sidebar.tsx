@@ -22,12 +22,15 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
     const typeLabel = activeProject?.issueType === 'issue' ? 'Issue' : 'Chapter';
 
+    // Updated style groups with new categories
     const STYLE_GROUPS: Record<string, string[]> = {
         "Noir & Crime": ["classic-noir", "sin-city", "crime-noir", "will-eisner"],
         "Superhero": ["bronze-superhero", "silver-superhero", "kirby-cosmic", "alex-ross", "frank-miller"],
-        "Horror": ["ec-horror", "vertigo-horror", "mignola-hellboy"],
+        "Horror & Dark Fantasy": ["ec-horror", "vertigo-horror", "mignola-hellboy", "hellraiser", "spawn-mcfarlane"],
         "Indie & European": ["underground-comix", "indie-minimalist", "clear-line", "european-bd", "modern-alt"],
-        "Realistic & Experimental": ["erotic-realism", "pulp-adventure", "cyberpunk-noir"]
+        "Americana & Whimsy": ["norman-rockwell", "kinkade-luminous", "lisa-frank"],
+        "Sci-Fi & Experimental": ["dune-epic", "erotic-realism", "pulp-adventure", "cyberpunk-noir"],
+        "Custom": ["custom"]
     };
 
     const [sidebarKey, setSidebarKey] = useState('');
@@ -115,13 +118,11 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
     // Generate with Leonardo
     const handleLeonardoClick = async () => {
-        // First click: switch to Leonardo provider
         if (activeProject?.imageProvider !== 'leonardo') {
             dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'leonardo' } });
             return;
         }
 
-        // Already on Leonardo but no key - just alert
         if (!activeProject?.leonardoApiKey) {
             alert("Leonardo API key is missing. Enter it above and click SET.");
             return;
@@ -321,311 +322,338 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
     return (
         <aside className="w-72 bg-ink-900 border-r border-ink-700 flex flex-col overflow-hidden z-30">
-        <div className="p-6 border-b border-ink-700">
-        <h1 className="font-display text-3xl tracking-widest text-ember-500 mb-1 text-center">INK TRACKER</h1>
-        <p className="font-mono text-[10px] text-steel-500 uppercase tracking-tighter text-center">Script System v1.6</p>
-        </div>
+            <div className="p-6 border-b border-ink-700">
+                <h1 className="font-display text-3xl tracking-widest text-ember-500 mb-1 text-center">INK TRACKER</h1>
+                <p className="font-mono text-[10px] text-steel-500 uppercase tracking-tighter text-center">Script System v1.7</p>
+            </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-8 scrollbar-none">
-        <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Story</h2>
-        <div className="flex gap-2">
-        <button
-        onClick={() => {
-            const i = activeProject?.issueType === 'issue' ? 'chapter' : 'issue';
-            if (activeProject) dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, updates: { issueType: i } });
-        }}
-        className="text-[9px] font-mono text-steel-600 hover:text-ember-500 uppercase transition-colors"
-        title="Switch Label Type"
-        >
-        Mode: {activeProject?.issueType}
-        </button>
-        <button onClick={onOpenProjects} className="text-steel-400 hover:text-ember-500 transition-colors">
-        <Icons.Folder />
-        </button>
-        </div>
-        </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-8 scrollbar-none">
+                <div>
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Story</h2>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    const i = activeProject?.issueType === 'issue' ? 'chapter' : 'issue';
+                                    if (activeProject) dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, updates: { issueType: i } });
+                                }}
+                                className="text-[9px] font-mono text-steel-600 hover:text-ember-500 uppercase transition-colors"
+                                title="Switch Label Type"
+                            >
+                                Mode: {activeProject?.issueType}
+                            </button>
+                            <button onClick={onOpenProjects} className="text-steel-400 hover:text-ember-500 transition-colors">
+                                <Icons.Folder />
+                            </button>
+                        </div>
+                    </div>
 
-        <div className="p-3 bg-ink-800 rounded border border-ink-700 shadow-inner flex flex-col gap-2">
-        <p className="font-display text-lg text-steel-200 tracking-wide truncate">{activeProject?.title}</p>
-        <button
-        onClick={onOpenScriptImport}
-        className="w-full mt-2 py-2 text-[10px] font-mono text-cyan-500 border border-cyan-800/50 rounded-lg hover:bg-cyan-900/20 uppercase tracking-widest transition-colors"
-        >
-        📜 Import Script
-        </button>
-
-        <div className="flex flex-col gap-2 mt-3">
-        <p className="text-[9px] font-mono text-steel-500 uppercase tracking-widest">Image Provider</p>
-        <div className="grid grid-cols-2 gap-1.5">
-        <button
-        onClick={handleGeminiClick}
-        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
-            activeProject?.imageProvider === 'gemini'
-            ? 'bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/30'
-            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-        }`}
-        >
-        GEMINI
-        </button>
-        <button
-        onClick={handleLeonardoClick}
-        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
-            activeProject?.imageProvider === 'leonardo'
-            ? 'bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-lg shadow-orange-600/30'
-            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-        }`}
-        >
-        LEONARDO
-        </button>
-        <button
-        onClick={handleGrokClick}
-        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
-            activeProject?.imageProvider === 'grok'
-            ? 'bg-gray-600 hover:bg-gray-500 text-white font-bold shadow-lg shadow-gray-600/30'
-            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-        }`}
-        title="xAI Grok - Image generation may be limited"
-        >
-        GROK
-        </button>
-        <button
-        onClick={handleFalClick}
-        className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
-            activeProject?.imageProvider === 'fal'
-            ? 'bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold shadow-lg shadow-ember-500/30'
-            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-        }`}
-        >
-        FAL
-        </button>
-        </div>
-        <button
-        onClick={handleSeaArtClick}
-        className={`w-full text-[9px] font-mono py-2 rounded-lg transition-all mt-1.5 ${
-            activeProject?.imageProvider === 'seaart'
-            ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
-            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-        }`}
-        title="SeaArt - Creative image generation"
-        >
-        SEAART
-        </button>
-        </div>
-
-        {/* API Key Input */}
-        <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
-        <label className="text-[9px] font-mono text-steel-500 uppercase flex justify-between items-center">
-        <span>
-        {activeProject?.imageProvider === 'gemini' ? 'Gemini' :
-         activeProject?.imageProvider === 'leonardo' ? 'Leonardo' :
-         activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
-         activeProject?.imageProvider === 'fal' ? 'FAL' :
-         activeProject?.imageProvider === 'seaart' ? 'SeaArt' : 'API'} Key
-        </span>
-        {!sidebarKey && <span className="text-red-500 font-bold animate-pulse text-[8px]">REQUIRED</span>}
-        </label>
-        <div className="flex gap-1">
-        <input
-        type="password"
-        placeholder="Enter API Key..."
-        value={sidebarKey}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
-        className="flex-1 bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-[10px] text-steel-300 focus:border-ember-500 outline-none"
-        />
-        <button
-        onClick={() => {
-            if (sidebarKey.trim()) {
-                if (activeProject?.imageProvider === 'gemini') {
-                    dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                } else if (activeProject?.imageProvider === 'leonardo') {
-                    dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                } else if (activeProject?.imageProvider === 'grok') {
-                    dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                } else if (activeProject?.imageProvider === 'fal') {
-                    dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                } else if (activeProject?.imageProvider === 'seaart') {
-                    dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
-                }
-                alert('API key saved!');
-            }
-        }}
-        className="bg-ember-500 hover:bg-ember-400 text-ink-950 px-4 rounded-lg text-[9px] transition-colors font-bold"
-        >
-        SET
-        </button>
-        </div>
-        <p className="text-[8px] text-steel-600 italic">
-        {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
-         activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
-         activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
-         activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' :
-         activeProject?.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
-        </p>
-        </div>
-        </div>
-        </div>
-
-        {/* Issues / Chapters section */}
-        <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">{typeLabel}s</h2>
-        <button
-        onClick={() => {
-            if (!activeProject) {
-                alert("No active project found. Try creating or selecting a story first.");
-                console.log("Active project missing when adding issue:", state.activeProjectId, state.projects);
-                return;
-            }
-            console.log("Dispatching ADD_ISSUE for project:", activeProject.id, activeProject.title);
-            dispatch({ type: 'ADD_ISSUE', projectId: activeProject.id });
-        }}
-        className="text-steel-400 hover:text-ember-500 transition-colors flex items-center gap-1 group"
-        title="Add New Issue/Chapter"
-        >
-        <Icons.Plus />
-        <span className="text-[9px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">NEW</span>
-        </button>
-        </div>
-
-        {/* Issues list */}
-        <div className="space-y-4">
-        {activeProject?.issues.map(iss => {
-            const isActive = state.activeIssueId === iss.id;
-            return (
-                <div key={iss.id} className={`rounded-lg overflow-hidden transition-all border ${isActive ? 'border-ember-500/30 bg-ember-500/5' : 'border-ink-700'}`}>
-                <div
-                onClick={() => dispatch({ type: 'SET_ACTIVE_ISSUE', id: iss.id })}
-                className={`px-3 py-2 flex items-center justify-between cursor-pointer group ${isActive ? 'bg-ember-500/10' : 'hover:bg-ink-800'}`}
-                >
-                <div className="flex items-center gap-2 overflow-hidden">
-                <span className={`text-[10px] font-mono ${isActive ? 'text-ember-500' : 'text-steel-600'}`}>{isActive ? '●' : '○'}</span>
-                <p className={`text-xs font-bold uppercase tracking-widest truncate ${isActive ? 'text-ember-500' : 'text-steel-400 group-hover:text-steel-200'}`}>{iss.title}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                <span className="text-[9px] font-mono text-steel-600">{iss.pages.length}P</span>
-                <button
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-steel-700 hover:text-red-500 transition-all"
-                >
-                <Icons.Trash />
-                </button>
-                </div>
-                </div>
-                {isActive && (
-                    <div className="px-2 py-2 border-t border-ember-500/10 space-y-1 animate-fade-in">
-                    {iss.pages.map(pg => (
+                    <div className="p-3 bg-ink-800 rounded border border-ink-700 shadow-inner flex flex-col gap-2">
+                        <p className="font-display text-lg text-steel-200 tracking-wide truncate">{activeProject?.title}</p>
                         <button
-                        key={pg.id}
-                        onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
-                        className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
-                            state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
-                        }`}
+                            onClick={onOpenScriptImport}
+                            className="w-full mt-2 py-2 text-[10px] font-mono text-cyan-500 border border-cyan-800/50 rounded-lg hover:bg-cyan-900/20 uppercase tracking-widest transition-colors"
                         >
-                        <span>PAGE {pg.number}</span>
-                        <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
+                            📜 Import Script
                         </button>
+
+                        <div className="flex flex-col gap-2 mt-3">
+                            <p className="text-[9px] font-mono text-steel-500 uppercase tracking-widest">Image Provider</p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                    onClick={handleGeminiClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'gemini'
+                                            ? 'bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-600/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                >
+                                    GEMINI
+                                </button>
+                                <button
+                                    onClick={handleLeonardoClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'leonardo'
+                                            ? 'bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-lg shadow-orange-600/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                >
+                                    LEONARDO
+                                </button>
+                                <button
+                                    onClick={handleGrokClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'grok'
+                                            ? 'bg-gray-600 hover:bg-gray-500 text-white font-bold shadow-lg shadow-gray-600/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                    title="xAI Grok - Image generation may be limited"
+                                >
+                                    GROK
+                                </button>
+                                <button
+                                    onClick={handleFalClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'fal'
+                                            ? 'bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold shadow-lg shadow-ember-500/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                >
+                                    FAL
+                                </button>
+                            </div>
+                            <button
+                                onClick={handleSeaArtClick}
+                                className={`w-full text-[9px] font-mono py-2 rounded-lg transition-all mt-1.5 ${
+                                    activeProject?.imageProvider === 'seaart'
+                                        ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
+                                        : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                }`}
+                                title="SeaArt - Creative image generation"
+                            >
+                                SEAART
+                            </button>
+                        </div>
+
+                        {/* API Key Input */}
+                        <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
+                            <label className="text-[9px] font-mono text-steel-500 uppercase flex justify-between items-center">
+                                <span>
+                                    {activeProject?.imageProvider === 'gemini' ? 'Gemini' :
+                                     activeProject?.imageProvider === 'leonardo' ? 'Leonardo' :
+                                     activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
+                                     activeProject?.imageProvider === 'fal' ? 'FAL' :
+                                     activeProject?.imageProvider === 'seaart' ? 'SeaArt' : 'API'} Key
+                                </span>
+                                {!sidebarKey && <span className="text-red-500 font-bold animate-pulse text-[8px]">REQUIRED</span>}
+                            </label>
+                            <div className="flex gap-1">
+                                <input
+                                    type="password"
+                                    placeholder="Enter API Key..."
+                                    value={sidebarKey}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSidebarKey(e.target.value)}
+                                    className="flex-1 bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-[10px] text-steel-300 focus:border-ember-500 outline-none"
+                                />
+                                <button
+                                    onClick={() => {
+                                        if (sidebarKey.trim()) {
+                                            if (activeProject?.imageProvider === 'gemini') {
+                                                dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            } else if (activeProject?.imageProvider === 'leonardo') {
+                                                dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            } else if (activeProject?.imageProvider === 'grok') {
+                                                dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            } else if (activeProject?.imageProvider === 'fal') {
+                                                dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            } else if (activeProject?.imageProvider === 'seaart') {
+                                                dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            }
+                                            alert('API key saved!');
+                                        }
+                                    }}
+                                    className="bg-ember-500 hover:bg-ember-400 text-ink-950 px-4 rounded-lg text-[9px] transition-colors font-bold"
+                                >
+                                    SET
+                                </button>
+                            </div>
+                            <p className="text-[8px] text-steel-600 italic">
+                                {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
+                                 activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
+                                 activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
+                                 activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' :
+                                 activeProject?.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Issues / Chapters section */}
+                <div>
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">{typeLabel}s</h2>
+                        <button
+                            onClick={() => {
+                                if (!activeProject) {
+                                    alert("No active project found. Try creating or selecting a story first.");
+                                    console.log("Active project missing when adding issue:", state.activeProjectId, state.projects);
+                                    return;
+                                }
+                                console.log("Dispatching ADD_ISSUE for project:", activeProject.id, activeProject.title);
+                                dispatch({ type: 'ADD_ISSUE', projectId: activeProject.id });
+                            }}
+                            className="text-steel-400 hover:text-ember-500 transition-colors flex items-center gap-1 group"
+                            title="Add New Issue/Chapter"
+                        >
+                            <Icons.Plus />
+                            <span className="text-[9px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">NEW</span>
+                        </button>
+                    </div>
+
+                    {/* Issues list */}
+                    <div className="space-y-4">
+                        {activeProject?.issues.map(iss => {
+                            const isActive = state.activeIssueId === iss.id;
+                            return (
+                                <div key={iss.id} className={`rounded-lg overflow-hidden transition-all border ${isActive ? 'border-ember-500/30 bg-ember-500/5' : 'border-ink-700'}`}>
+                                    <div
+                                        onClick={() => dispatch({ type: 'SET_ACTIVE_ISSUE', id: iss.id })}
+                                        className={`px-3 py-2 flex items-center justify-between cursor-pointer group ${isActive ? 'bg-ember-500/10' : 'hover:bg-ink-800'}`}
+                                    >
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <span className={`text-[10px] font-mono ${isActive ? 'text-ember-500' : 'text-steel-600'}`}>{isActive ? '●' : '○'}</span>
+                                            <p className={`text-xs font-bold uppercase tracking-widest truncate ${isActive ? 'text-ember-500' : 'text-steel-400 group-hover:text-steel-200'}`}>{iss.title}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[9px] font-mono text-steel-600">{iss.pages.length}P</span>
+                                            <button
+                                                onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (confirm(`Delete ${iss.title}?`)) dispatch({ type: 'DELETE_ISSUE', issueId: iss.id }); }}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-steel-700 hover:text-red-500 transition-all"
+                                            >
+                                                <Icons.Trash />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {isActive && (
+                                        <div className="px-2 py-2 border-t border-ember-500/10 space-y-1 animate-fade-in">
+                                            {iss.pages.map(pg => (
+                                                <button
+                                                    key={pg.id}
+                                                    onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
+                                                    className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
+                                                        state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
+                                                    }`}
+                                                >
+                                                    <span>PAGE {pg.number}</span>
+                                                    <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => dispatch({ type: 'ADD_PAGE', issueId: iss.id })}
+                                                className="w-full py-1 text-center text-[10px] font-mono text-steel-600 hover:text-ember-500 hover:bg-ink-800 rounded transition-all mt-1 uppercase tracking-tighter"
+                                            >
+                                                + Add Page
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Cast section */}
+                <div>
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Cast</h2>
+                        <button
+                            onClick={() => setShowCharForm(!showCharForm)}
+                            className={`transition-colors ${showCharForm ? 'text-ember-500 rotate-45' : 'text-steel-400 hover:text-ember-500'}`}
+                        >
+                            <Icons.Plus />
+                        </button>
+                    </div>
+
+                    {showCharForm && (
+                        <div className="mb-4 p-3 bg-ink-800 border border-ember-500/30 rounded-lg space-y-3 animate-fade-in shadow-xl">
+                            <input
+                                autoFocus
+                                placeholder="Name (e.g. Detective Jack)"
+                                value={charName}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCharName(e.target.value)}
+                                className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-200 focus:border-ember-500 outline-none font-bold"
+                            />
+                            <textarea
+                                placeholder="Description (age, vibe, key features...)"
+                                value={charDesc}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCharDesc(e.target.value)}
+                                rows={2}
+                                className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-400 focus:border-ember-500 outline-none resize-none italic"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleAddChar}
+                                    className="flex-1 bg-ember-500 text-ink-950 font-bold py-1.5 rounded text-[10px] uppercase tracking-widest hover:bg-ember-400 transition-colors"
+                                >
+                                    Save Cast
+                                </button>
+                                <button
+                                    onClick={() => setShowCharForm(false)}
+                                    className="px-3 py-1.5 border border-ink-700 text-steel-500 rounded text-[10px] uppercase hover:bg-ink-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        {activeProject?.characters.map(char => (
+                            <div key={char.id} className="group flex items-center justify-between p-2 bg-ink-800/50 rounded border border-ink-700/50">
+                                <div className="overflow-hidden">
+                                    <p className="text-[11px] text-steel-300 font-bold truncate">{char.name}</p>
+                                    <p className="text-[9px] text-steel-600 truncate italic">{char.description}</p>
+                                </div>
+                                <button
+                                    onClick={() => dispatch({ type: 'DELETE_CHARACTER', id: char.id })}
+                                    className="opacity-0 group-hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
+                                >
+                                    <Icons.Trash />
+                                </button>
+                            </div>
+                        ))}
+                        {!activeProject?.characters.length && !showCharForm && (
+                            <p className="text-[10px] text-steel-700 italic text-center py-4 px-2 border border-dashed border-ink-700 rounded-lg">No cast members added yet.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Art Style selector - Updated with custom style support */}
+            <div className="p-6 border-t border-ink-700 bg-ink-950 space-y-3">
+                <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest px-1">Art Style</h2>
+                <select
+                    value={activeProject?.style}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                        dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { style: e.target.value } });
+                        // Clear custom prompt if switching away from custom
+                        if (e.target.value !== 'custom' && activeProject?.customStylePrompt) {
+                            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { customStylePrompt: '' } });
+                        }
+                    }}
+                    className="w-full bg-ink-800 border border-ink-700 rounded-lg px-2 py-2 text-xs text-steel-300 font-mono focus:outline-none focus:border-ember-500 transition-colors"
+                >
+                    {Object.entries(STYLE_GROUPS).map(([groupName, styleIds]) => (
+                        <optgroup key={groupName} label={groupName}>
+                            {styleIds.map(id => {
+                                const s = ART_STYLES.find(x => x.id === id);
+                                return s ? <option key={s.id} value={s.id}>{s.name}</option> : null;
+                            })}
+                        </optgroup>
                     ))}
-                    <button
-                    onClick={() => dispatch({ type: 'ADD_PAGE', issueId: iss.id })}
-                    className="w-full py-1 text-center text-[10px] font-mono text-steel-600 hover:text-ember-500 hover:bg-ink-800 rounded transition-all mt-1 uppercase tracking-tighter"
-                    >
-                    + Add Page
-                    </button>
+                </select>
+
+                {/* Custom style input - only shows when "custom" is selected */}
+                {activeProject?.style === 'custom' && (
+                    <div className="space-y-2 animate-fade-in">
+                        <label className="text-[9px] font-mono text-steel-500 uppercase">
+                            Custom Style Prompt
+                        </label>
+                        <textarea
+                            placeholder="Describe your art style... (e.g., 'watercolor fantasy, soft edges, muted pastels, Studio Ghibli influence')"
+                            value={activeProject?.customStylePrompt || ''}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { customStylePrompt: e.target.value } })
+                            }
+                            rows={3}
+                            className="w-full bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-xs text-steel-300 focus:outline-none focus:border-ember-500 transition-colors resize-none placeholder-steel-600"
+                        />
+                        <p className="text-[8px] text-steel-600 italic">
+                            Tip: Include artist names, techniques, color palettes, and mood descriptors.
+                        </p>
                     </div>
                 )}
-                </div>
-            );
-        })}
-        </div>
-        </div>
-
-        {/* Cast section */}
-        <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest">Cast</h2>
-        <button
-        onClick={() => setShowCharForm(!showCharForm)}
-        className={`transition-colors ${showCharForm ? 'text-ember-500 rotate-45' : 'text-steel-400 hover:text-ember-500'}`}
-        >
-        <Icons.Plus />
-        </button>
-        </div>
-
-        {showCharForm && (
-            <div className="mb-4 p-3 bg-ink-800 border border-ember-500/30 rounded-lg space-y-3 animate-fade-in shadow-xl">
-            <input
-            autoFocus
-            placeholder="Name (e.g. Detective Jack)"
-            value={charName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCharName(e.target.value)}
-            className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-200 focus:border-ember-500 outline-none font-bold"
-            />
-            <textarea
-            placeholder="Description (age, vibe, key features...)"
-            value={charDesc}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCharDesc(e.target.value)}
-            rows={2}
-            className="w-full bg-ink-950 border border-ink-700 rounded px-3 py-1.5 text-xs text-steel-400 focus:border-ember-500 outline-none resize-none italic"
-            />
-            <div className="flex gap-2">
-            <button
-            onClick={handleAddChar}
-            className="flex-1 bg-ember-500 text-ink-950 font-bold py-1.5 rounded text-[10px] uppercase tracking-widest hover:bg-ember-400 transition-colors"
-            >
-            Save Cast
-            </button>
-            <button
-            onClick={() => setShowCharForm(false)}
-            className="px-3 py-1.5 border border-ink-700 text-steel-500 rounded text-[10px] uppercase hover:bg-ink-700"
-            >
-            Cancel
-            </button>
             </div>
-            </div>
-        )}
-
-        <div className="space-y-2">
-        {activeProject?.characters.map(char => (
-            <div key={char.id} className="group flex items-center justify-between p-2 bg-ink-800/50 rounded border border-ink-700/50">
-            <div className="overflow-hidden">
-            <p className="text-[11px] text-steel-300 font-bold truncate">{char.name}</p>
-            <p className="text-[9px] text-steel-600 truncate italic">{char.description}</p>
-            </div>
-            <button
-            onClick={() => dispatch({ type: 'DELETE_CHARACTER', id: char.id })}
-            className="opacity-0 group-hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
-            >
-            <Icons.Trash />
-            </button>
-            </div>
-        ))}
-        {!activeProject?.characters.length && !showCharForm && (
-            <p className="text-[10px] text-steel-700 italic text-center py-4 px-2 border border-dashed border-ink-700 rounded-lg">No cast members added yet.</p>
-        )}
-        </div>
-        </div>
-        </div>
-
-        {/* Art Style selector */}
-        <div className="p-6 border-t border-ink-700 bg-ink-950 space-y-3">
-        <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest px-1">Art Style</h2>
-        <select
-        value={activeProject?.style}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { style: e.target.value } })}
-        className="w-full bg-ink-800 border border-ink-700 rounded-lg px-2 py-2 text-xs text-steel-300 font-mono focus:outline-none focus:border-ember-500 transition-colors"
-        >
-        {Object.entries(STYLE_GROUPS).map(([groupName, styleIds]) => (
-            <optgroup key={groupName} label={groupName}>
-            {styleIds.map(id => {
-                const s = ART_STYLES.find(x => x.id === id);
-                return s ? <option key={s.id} value={s.id}>{s.name}</option> : null;
-            })}
-            </optgroup>
-        ))}
-        </select>
-        </div>
         </aside>
     );
 };
