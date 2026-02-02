@@ -557,7 +557,9 @@ export default function App() {
     wheel={{ disabled: !zoomEnabled }}
     >
     <main className={`flex-1 flex flex-col overflow-hidden relative transition-colors ${showGutters ? 'bg-gray-200' : 'bg-ink-950'} ${zoomEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-    <header className={`px-10 py-6 border-b flex items-center justify-between z-[100] backdrop-blur-xl transition-all shrink-0 ${showGutters ? 'bg-white/80 border-black' : 'bg-ink-950/50 border-ink-700/50'}`}>
+    <header className={`px-10 py-4 border-b flex flex-col gap-3 z-[100] backdrop-blur-xl transition-all shrink-0 ${showGutters ? 'bg-white/80 border-black' : 'bg-ink-950/50 border-ink-700/50'}`}>
+    {/* Top Row: Breadcrumb/Title and Tab Navigation */}
+    <div className="flex items-center justify-between">
     <div className="flex flex-col gap-1 overflow-hidden">
     <div className={`flex items-center gap-2 text-[9px] font-mono uppercase tracking-widest truncate ${showGutters ? 'text-gray-500' : 'text-steel-500'}`}>
     <span>{activeProject?.title}</span>
@@ -600,8 +602,12 @@ export default function App() {
         HOW TO USE
       </button>
     </div>
+    </div>
 
-    <div className="flex items-center gap-6">
+    {/* Bottom Row: Canvas Controls and Action Buttons */}
+    <div className="flex items-center justify-between gap-4">
+    {/* Left Side: Canvas Controls */}
+    <div className="flex items-center gap-4">
     {/* Undo/Redo buttons */}
     <div className="flex items-center gap-1">
       <button
@@ -636,12 +642,14 @@ export default function App() {
     showGutters={showGutters}
     setShowGutters={setShowGutters}
     />
+    </div>
 
-    <div className="flex gap-4 relative pointer-events-auto">
+    {/* Right Side: Action Buttons - Wrapped */}
+    <div className="flex items-center gap-3 flex-wrap justify-end relative pointer-events-auto">
     <div className="relative">
     <button
     onClick={() => setShowExportMenu(!showExportMenu)}
-    className={`font-mono text-xs px-6 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-3 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+    className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
     >
     {exporting ? <Icons.Loader /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
     EXPORT
@@ -657,14 +665,14 @@ export default function App() {
       </div>
     )}
     </div>
-    <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-8 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
+    <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
     {batching ? <Icons.Loader /> : <Icons.Magic />}AUTO-INK
     </button>
     {/* Page Templates */}
     <div className="relative">
       <button
         onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-        className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
         title="Apply page template"
       >
         <LayoutGrid size={16} />
@@ -721,7 +729,7 @@ export default function App() {
     {activeIssue?.scriptText && (
       <button
         onClick={() => setShowScriptPanel(!showScriptPanel)}
-        className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showScriptPanel ? 'bg-ember-500 border-ember-400 text-ink-950' : showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showScriptPanel ? 'bg-ember-500 border-ember-400 text-ink-950' : showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
         title="Toggle script reference panel"
       >
         <FileText size={16} />
@@ -731,7 +739,7 @@ export default function App() {
     {/* Character Bank */}
     <button
       onClick={() => setShowCharacterBank(true)}
-      className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+      className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
       title="Manage characters"
     >
       <Users size={16} />
@@ -741,13 +749,13 @@ export default function App() {
     <button
       onClick={() => { setShowReadThrough(true); setReadThroughIndex(0); }}
       disabled={!activePage?.panels.length}
-      className={`font-mono text-xs px-4 py-2.5 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg disabled:opacity-30 ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+      className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg disabled:opacity-30 ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
       title="Read-through mode (slideshow)"
     >
       <Play size={16} />
       PRESENT
     </button>
-    <button onClick={() => activePage && dispatch({ type: 'ADD_PANEL', pageId: activePage.id })} className={`font-display text-2xl px-10 py-2.5 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
+    <button onClick={() => activePage && dispatch({ type: 'ADD_PANEL', pageId: activePage.id })} className={`font-display text-xl px-6 py-2 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
     ADD FRAME
     </button>
     </div>
