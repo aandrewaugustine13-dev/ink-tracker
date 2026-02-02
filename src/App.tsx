@@ -39,6 +39,7 @@ import PanelCard from './components/PanelCard';
 import ZoomControls from './components/ZoomControls';
 import ProjectHub from './components/ProjectHub';
 import CharacterBank from './components/CharacterBank';
+import UserGuide from './components/UserGuide';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -124,6 +125,7 @@ export default function App() {
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
   const [showCharacterBank, setShowCharacterBank] = useState(false);
+  const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
@@ -563,8 +565,40 @@ export default function App() {
     <span className={showGutters ? 'text-black' : 'text-ember-500/80'}>{activeIssue?.title}</span>
     </div>
     <h1 className={`font-display text-4xl uppercase tracking-tighter truncate ${showGutters ? 'text-black' : 'text-steel-100'}`}>
-    Page {activePage?.number || '-'}
+    {activeTab === 'canvas' ? `Page ${activePage?.number || '-'}` : 'How to Use'}
     </h1>
+    </div>
+
+    {/* Tab Navigation */}
+    <div className={`flex items-center gap-1 rounded-full border p-1 ${showGutters ? 'bg-gray-100 border-gray-300' : 'bg-ink-900 border-ink-700'}`}>
+      <button
+        onClick={() => setActiveTab('canvas')}
+        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+          activeTab === 'canvas'
+            ? showGutters
+              ? 'bg-white text-black shadow-sm'
+              : 'bg-ember-500 text-ink-950 shadow-lg'
+            : showGutters
+              ? 'text-gray-600 hover:text-black'
+              : 'text-steel-400 hover:text-steel-200'
+        }`}
+      >
+        CANVAS
+      </button>
+      <button
+        onClick={() => setActiveTab('guide')}
+        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+          activeTab === 'guide'
+            ? showGutters
+              ? 'bg-white text-black shadow-sm'
+              : 'bg-ember-500 text-ink-950 shadow-lg'
+            : showGutters
+              ? 'text-gray-600 hover:text-black'
+              : 'text-steel-400 hover:text-steel-200'
+        }`}
+      >
+        HOW TO USE
+      </button>
     </div>
 
     <div className="flex items-center gap-6">
@@ -720,43 +754,49 @@ export default function App() {
     </div>
     </header>
 
-    <div className={`flex-1 ${zoomEnabled ? 'overflow-hidden' : 'overflow-scroll'}`}>
-    <TransformComponent 
-    wrapperClass="w-full h-full" 
-    contentClass=""
-    >
-    <ZoomableCanvas
-    activePage={activePage}
-    activeProject={activeProject}
-    dispatch={dispatch}
-    sensors={sensors}
-    handleDragStart={handleDragStart}
-    handleDragEnd={handleDragEnd}
-    activeId={activeId}
-    activePanelForOverlay={activePanelForOverlay}
-    showGutters={showGutters}
-    zoomEnabled={zoomEnabled}
-    selectedPanelId={selectedPanelId}
-    setSelectedPanelId={setSelectedPanelId}
-    copiedPanelSettings={copiedPanelSettings}
-    setCopiedPanelSettings={setCopiedPanelSettings}
-    />
-    </TransformComponent>
-    </div>
+    {activeTab === 'canvas' ? (
+      <>
+        <div className={`flex-1 ${zoomEnabled ? 'overflow-hidden' : 'overflow-scroll'}`}>
+        <TransformComponent 
+        wrapperClass="w-full h-full" 
+        contentClass=""
+        >
+        <ZoomableCanvas
+        activePage={activePage}
+        activeProject={activeProject}
+        dispatch={dispatch}
+        sensors={sensors}
+        handleDragStart={handleDragStart}
+        handleDragEnd={handleDragEnd}
+        activeId={activeId}
+        activePanelForOverlay={activePanelForOverlay}
+        showGutters={showGutters}
+        zoomEnabled={zoomEnabled}
+        selectedPanelId={selectedPanelId}
+        setSelectedPanelId={setSelectedPanelId}
+        copiedPanelSettings={copiedPanelSettings}
+        setCopiedPanelSettings={setCopiedPanelSettings}
+        />
+        </TransformComponent>
+        </div>
 
-    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 border border-white/10 rounded-full px-8 py-4 flex items-center gap-10 shadow-2xl z-[400] transition-all ${showGutters ? 'bg-white border-black text-black' : 'bg-ink-900/95 backdrop-blur-2xl text-steel-400'}`}>
-    <div className="flex items-center gap-4">
-    <div className={`w-3 h-3 rounded-full ${batching || exporting ? 'bg-ember-500 animate-ping' : 'bg-green-500'}`}></div>
-    <span className="text-[10px] font-mono uppercase tracking-[0.3em] font-bold">{batching ? 'BATCH INKING...' : exporting ? 'EXPORTING...' : 'TERMINAL READY'}</span>
-    </div>
-    <div className={`h-5 w-px ${showGutters ? 'bg-black/20' : 'bg-ink-700'}`}></div>
-    <div className="flex gap-8">
-    <div className="flex flex-col">
-    <span className="text-[9px] font-mono uppercase mb-0.5 opacity-60">Project</span>
-    <span className={`text-[11px] font-mono uppercase font-bold truncate max-w-[120px] ${showGutters ? 'text-black' : 'text-steel-200'}`}>{activeProject?.title}</span>
-    </div>
-    </div>
-    </div>
+        <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 border border-white/10 rounded-full px-8 py-4 flex items-center gap-10 shadow-2xl z-[400] transition-all ${showGutters ? 'bg-white border-black text-black' : 'bg-ink-900/95 backdrop-blur-2xl text-steel-400'}`}>
+        <div className="flex items-center gap-4">
+        <div className={`w-3 h-3 rounded-full ${batching || exporting ? 'bg-ember-500 animate-ping' : 'bg-green-500'}`}></div>
+        <span className="text-[10px] font-mono uppercase tracking-[0.3em] font-bold">{batching ? 'BATCH INKING...' : exporting ? 'EXPORTING...' : 'TERMINAL READY'}</span>
+        </div>
+        <div className={`h-5 w-px ${showGutters ? 'bg-black/20' : 'bg-ink-700'}`}></div>
+        <div className="flex gap-8">
+        <div className="flex flex-col">
+        <span className="text-[9px] font-mono uppercase mb-0.5 opacity-60">Project</span>
+        <span className={`text-[11px] font-mono uppercase font-bold truncate max-w-[120px] ${showGutters ? 'text-black' : 'text-steel-200'}`}>{activeProject?.title}</span>
+        </div>
+        </div>
+        </div>
+      </>
+    ) : (
+      <UserGuide showGutters={showGutters} />
+    )}
     </main>
     </TransformWrapper>
 
