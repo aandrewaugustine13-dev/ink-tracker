@@ -23,10 +23,10 @@ import {
   Issue,
   Character,
   AspectRatio,
-  AppStateWithHistory
+  Project
 } from './types';
 import { historyReducer, createInitialHistoryState, canUndo, canRedo } from './state/reducer';
-import { createInitialState } from './state/initialState';
+import { createInitialState, normalizeProjects } from './state/initialState';
 import { Action } from './state/actions';
 import { genId } from './utils/helpers';
 import { getImage, saveImage } from './services/imageStorage';
@@ -40,6 +40,11 @@ import ZoomControls from './components/ZoomControls';
 import ProjectHub from './components/ProjectHub';
 import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { useCloudSync } from './hooks/useCloudSync';
+import { LoginScreen } from './components/LoginScreen';
+import { SyncIndicator } from './components/SyncIndicator';
+import { isSupabaseConfigured } from './services/supabase';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -99,7 +104,8 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
   };
 };
 
-export default function App() {
+function AppContent() {
+  const { user, signOut } = useAuth();
   const [stateWithHistory, dispatchWithHistory] = useReducer(
     historyReducer,
     null,
@@ -109,6 +115,34 @@ export default function App() {
   // Extract present state and create dispatch wrapper
   const state = stateWithHistory.present;
   const dispatch = dispatchWithHistory as React.Dispatch<Action>;
+
+  const activeProjectIdRef = useRef<string | null>(state.activeProjectId);
+
+  useEffect(() => {
+    activeProjectIdRef.current = state.activeProjectId;
+  }, [state.activeProjectId]);
+
+  const handleCloudProjectsLoaded = useCallback((cloudProjects: Project[]) => {
+    if (!cloudProjects.length) return;
+    const normalizedProjects = normalizeProjects(cloudProjects);
+    const preferredProjectId = activeProjectIdRef.current &&
+      normalizedProjects.some((project) => project.id === activeProjectIdRef.current)
+      ? activeProjectIdRef.current
+      : normalizedProjects[0]?.id;
+    const activeProject = normalizedProjects.find((project) => project.id === preferredProjectId);
+
+    dispatch({
+      type: 'HYDRATE',
+      payload: {
+        projects: normalizedProjects,
+        activeProjectId: preferredProjectId || null,
+        activeIssueId: activeProject?.issues[0]?.id || null,
+        activePageId: activeProject?.issues[0]?.pages[0]?.id || null,
+      },
+    });
+  }, [dispatch]);
+
+  const { syncStatus } = useCloudSync(state, handleCloudProjectsLoaded);
   
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [batching, setBatching] = useState(false);
@@ -537,6 +571,10 @@ export default function App() {
     } finally { setBatching(false); }
   };
 
+  if (isSupabaseConfigured() && !user) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
     <Sidebar
@@ -571,36 +609,54 @@ export default function App() {
     </h1>
     </div>
 
-    {/* Tab Navigation */}
-    <div className={`flex items-center gap-1 rounded-full border p-1 ${showGutters ? 'bg-gray-100 border-gray-300' : 'bg-ink-900 border-ink-700'}`}>
-      <button
-        onClick={() => setActiveTab('canvas')}
-        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
-          activeTab === 'canvas'
-            ? showGutters
-              ? 'bg-white text-black shadow-sm'
-              : 'bg-ember-500 text-ink-950 shadow-lg'
-            : showGutters
-              ? 'text-gray-600 hover:text-black'
-              : 'text-steel-400 hover:text-steel-200'
-        }`}
-      >
-        CANVAS
-      </button>
-      <button
-        onClick={() => setActiveTab('guide')}
-        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
-          activeTab === 'guide'
-            ? showGutters
-              ? 'bg-white text-black shadow-sm'
-              : 'bg-ember-500 text-ink-950 shadow-lg'
-            : showGutters
-              ? 'text-gray-600 hover:text-black'
-              : 'text-steel-400 hover:text-steel-200'
-        }`}
-      >
-        HOW TO USE
-      </button>
+    <div className="flex items-center gap-4">
+      {user && (
+        <div className="flex items-center gap-3">
+          <SyncIndicator status={syncStatus} />
+          <button
+            onClick={signOut}
+            className={`text-[10px] font-mono uppercase tracking-widest transition-colors ${
+              showGutters
+                ? 'text-gray-500 hover:text-black'
+                : 'text-steel-500 hover:text-ember-500'
+            }`}
+            title="Sign out"
+          >
+            Logout
+          </button>
+        </div>
+      )}
+      {/* Tab Navigation */}
+      <div className={`flex items-center gap-1 rounded-full border p-1 ${showGutters ? 'bg-gray-100 border-gray-300' : 'bg-ink-900 border-ink-700'}`}>
+        <button
+          onClick={() => setActiveTab('canvas')}
+          className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+            activeTab === 'canvas'
+              ? showGutters
+                ? 'bg-white text-black shadow-sm'
+                : 'bg-ember-500 text-ink-950 shadow-lg'
+              : showGutters
+                ? 'text-gray-600 hover:text-black'
+                : 'text-steel-400 hover:text-steel-200'
+          }`}
+        >
+          CANVAS
+        </button>
+        <button
+          onClick={() => setActiveTab('guide')}
+          className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+            activeTab === 'guide'
+              ? showGutters
+                ? 'bg-white text-black shadow-sm'
+                : 'bg-ember-500 text-ink-950 shadow-lg'
+              : showGutters
+                ? 'text-gray-600 hover:text-black'
+                : 'text-steel-400 hover:text-steel-200'
+          }`}
+        >
+          HOW TO USE
+        </button>
+      </div>
     </div>
     </div>
 
@@ -891,6 +947,16 @@ export default function App() {
     </div>
   );
 }
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};
+
+export default App;
 
 // Helper component for read-through mode to load images
 function ReadThroughPanel({ panelId, imageUrl }: { panelId: string; imageUrl?: string }) {

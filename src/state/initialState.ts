@@ -8,22 +8,9 @@ export const createInitialState = (): AppState => {
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
-            parsed.projects.forEach((proj: Project) => {
-                if (!proj.issueType) proj.issueType = 'issue';
-                if (!proj.imageProvider) proj.imageProvider = 'gemini';
-                if (!proj.fluxModel) proj.fluxModel = 'fal-ai/flux-pro';
-                // Migrate old provider names
-                if ((proj.imageProvider as string) === 'fal-flux') proj.imageProvider = 'fal';
-                if ((proj.imageProvider as string) === 'replicate-flux') proj.imageProvider = 'gemini';
-            proj.issues.forEach(iss => {
-                iss.pages.forEach(pg => {
-                    pg.panels.forEach(pan => {
-                        if (!pan.textElements) pan.textElements = [];
-                        if (!pan.characterIds) pan.characterIds = [];
-                    });
-                });
-            });
-            });
+            if (parsed?.projects) {
+                parsed.projects = normalizeProjects(parsed.projects);
+            }
             return parsed;
         } catch (e) {
             console.error("Load failed", e);
@@ -59,4 +46,32 @@ export const createInitialState = (): AppState => {
         activeIssueId: 'i1',
         activePageId: 'pg1'
     };
+};
+
+export const normalizeProjects = (projects: Project[]): Project[] => {
+    return projects.map((proj) => {
+        const normalized: Project = {
+            ...proj,
+            issueType: proj.issueType || 'issue',
+            imageProvider: proj.imageProvider || 'gemini',
+            fluxModel: proj.fluxModel || 'fal-ai/flux-pro',
+            characters: proj.characters || [],
+            issues: (proj.issues || []).map((iss) => ({
+                ...iss,
+                pages: (iss.pages || []).map((pg) => ({
+                    ...pg,
+                    panels: (pg.panels || []).map((pan) => ({
+                        ...pan,
+                        textElements: pan.textElements || [],
+                        characterIds: pan.characterIds || [],
+                    })),
+                })),
+            })),
+        };
+
+        if ((normalized.imageProvider as string) === 'fal-flux') normalized.imageProvider = 'fal';
+        if ((normalized.imageProvider as string) === 'replicate-flux') normalized.imageProvider = 'gemini';
+
+        return normalized;
+    });
 };
