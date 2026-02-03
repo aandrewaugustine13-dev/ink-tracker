@@ -82,6 +82,10 @@ export function appReducer(state: AppState, action: Action): AppState {
     let newState = { ...state };
 
     switch (action.type) {
+        case 'HYDRATE': {
+            newState = action.payload;
+            break;
+        }
         case 'SET_ACTIVE_PROJECT': {
             const p = state.projects.find(x => x.id === action.id);
             newState = {
@@ -433,6 +437,7 @@ export function appReducer(state: AppState, action: Action): AppState {
 
 // Actions that should NOT be recorded in history (navigation, UI state)
 const NON_HISTORICAL_ACTIONS = new Set([
+    'HYDRATE',
     'SET_ACTIVE_PROJECT',
     'SET_ACTIVE_ISSUE', 
     'SET_ACTIVE_PAGE',
@@ -448,6 +453,14 @@ export function historyReducer(
     const { past, present, future } = stateWithHistory;
 
     switch (action.type) {
+        case 'HYDRATE': {
+            const newPresent = appReducer(present, action);
+            return {
+                past: [],
+                present: newPresent,
+                future: [],
+            };
+        }
         case 'UNDO': {
             if (past.length === 0) return stateWithHistory;
             const previous = past[past.length - 1];

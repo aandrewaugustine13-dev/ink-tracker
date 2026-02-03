@@ -1,9 +1,10 @@
-import { Project, Issue, Panel, Character, TextElement, AspectRatio } from '../types';
+import { Project, Issue, Panel, Character, TextElement, AspectRatio, AppState } from '../types';
 
 // Page template types
 export type PageTemplate = '2x2' | '3x3' | '2x3' | 'manga-right' | 'manga-left' | 'single' | 'double-wide';
 
 export type Action =
+| { type: 'HYDRATE'; payload: AppState }
 | { type: 'SET_ACTIVE_PROJECT'; id: string }
 | { type: 'ADD_PROJECT'; title: string }
 | { type: 'UPDATE_PROJECT'; id: string; updates: Partial<Project> }
