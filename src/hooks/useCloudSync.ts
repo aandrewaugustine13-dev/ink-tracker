@@ -32,7 +32,7 @@ export const useCloudSync = (
     let isMounted = true;
 
     const loadFromCloud = async () => {
-      setSyncStatus({ status: 'saving' });
+      setSyncStatus({ status: 'loading' });
       const { projects, error } = await loadProjectsFromCloud(user.id);
 
       if (!isMounted) return;

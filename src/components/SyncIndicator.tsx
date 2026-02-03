@@ -8,6 +8,7 @@ interface Props {
 export const SyncIndicator: React.FC<Props> = ({ status }) => {
   const getIcon = () => {
     switch (status.status) {
+      case 'loading':
       case 'saving':
         return (
           <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -38,12 +39,14 @@ export const SyncIndicator: React.FC<Props> = ({ status }) => {
 
   const getLabel = () => {
     switch (status.status) {
+      case 'loading':
+        return 'Loading...';
       case 'saving':
         return 'Saving...';
       case 'saved':
-        return 'Saved';
+        return 'Synced';
       case 'error':
-        return 'Sync error';
+        return status.error || 'Sync error';
       default:
         return 'Ready';
     }
@@ -51,6 +54,8 @@ export const SyncIndicator: React.FC<Props> = ({ status }) => {
 
   const getColor = () => {
     switch (status.status) {
+      case 'loading':
+        return 'text-blue-400';
       case 'saving':
         return 'text-ember-400';
       case 'saved':
@@ -62,10 +67,19 @@ export const SyncIndicator: React.FC<Props> = ({ status }) => {
     }
   };
 
+  // Truncate long error messages for display
+  const displayLabel = getLabel();
+  const truncatedLabel = displayLabel.length > 30 
+    ? displayLabel.substring(0, 30) + '...' 
+    : displayLabel;
+
   return (
-    <div className={`flex items-center gap-2 text-xs ${getColor()}`} title={status.error}>
+    <div 
+      className={`flex items-center gap-2 text-xs ${getColor()} cursor-default`} 
+      title={status.error || displayLabel}
+    >
       {getIcon()}
-      <span>{getLabel()}</span>
+      <span>{status.status === 'error' ? truncatedLabel : displayLabel}</span>
     </div>
   );
 };
