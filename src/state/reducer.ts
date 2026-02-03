@@ -6,8 +6,6 @@ import {
     Issue,
     Page,
     Panel,
-    Character,
-    TextElement,
     AspectRatio
 } from '../types';
 import { genId } from '../utils/helpers';
@@ -82,6 +80,20 @@ export function appReducer(state: AppState, action: Action): AppState {
     let newState = { ...state };
 
     switch (action.type) {
+        case 'HYDRATE': {
+            // Merge cloud data with local state
+            const payload = action.payload;
+            newState = {
+                ...state,
+                ...payload,
+                projects: payload.projects || state.projects,
+                activeProjectId: payload.activeProjectId || payload.projects?.[0]?.id || state.activeProjectId,
+                activeIssueId: payload.activeIssueId || payload.projects?.[0]?.issues?.[0]?.id || state.activeIssueId,
+                activePageId: payload.activePageId || payload.projects?.[0]?.issues?.[0]?.pages?.[0]?.id || state.activePageId,
+            };
+            break;
+        }
+
         case 'SET_ACTIVE_PROJECT': {
             const p = state.projects.find(x => x.id === action.id);
             newState = {
@@ -402,7 +414,7 @@ export function appReducer(state: AppState, action: Action): AppState {
                     pages: iss.pages.map(pg => {
                         if (pg.id !== action.pageId) return pg;
                         // Create new panels based on template
-                        const newPanels: Panel[] = template.panels.map((config, idx) => ({
+                        const newPanels: Panel[] = template.panels.map((config) => ({
                             id: genId(),
                             prompt: '',
                             aspectRatio: config.aspectRatio,
