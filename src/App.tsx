@@ -6,7 +6,6 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
-  DragMoveEvent,
   Modifier
 } from '@dnd-kit/core';
 import {
@@ -16,14 +15,14 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
 import {
   Page,
   Issue,
   Character,
   AspectRatio,
-  AppStateWithHistory
+  Project
 } from './types';
 import { historyReducer, createInitialHistoryState, canUndo, canRedo } from './state/reducer';
 import { createInitialState } from './state/initialState';
@@ -46,6 +45,13 @@ import { generateLeonardoImage } from './services/leonardoService';
 import { generateGrokImage } from './services/grokService';
 import { generateFluxImage as generateFalFlux } from './services/falFluxService';
 import { generateSeaArtImage } from './services/seaartService';
+
+// Auth and sync imports
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { useCloudSync } from './hooks/useCloudSync';
+import { LoginScreen } from './components/LoginScreen';
+import { SyncIndicator } from './components/SyncIndicator';
+import { isSupabaseConfigured } from './services/supabase';
 
 /**
  * Helper to build a full appearance description for image generation
@@ -99,7 +105,9 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
   };
 };
 
-export default function App() {
+function AppContent() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  
   const [stateWithHistory, dispatchWithHistory] = useReducer(
     historyReducer,
     null,
@@ -109,6 +117,21 @@ export default function App() {
   // Extract present state and create dispatch wrapper
   const state = stateWithHistory.present;
   const dispatch = dispatchWithHistory as React.Dispatch<Action>;
+  
+  // Cloud sync hook - handles loading from cloud and auto-saving
+  const handleProjectsLoaded = useCallback((cloudProjects: Project[]) => {
+    dispatch({ 
+      type: 'HYDRATE', 
+      payload: { 
+        projects: cloudProjects,
+        activeProjectId: cloudProjects[0]?.id || null,
+        activeIssueId: cloudProjects[0]?.issues?.[0]?.id || null,
+        activePageId: cloudProjects[0]?.issues?.[0]?.pages?.[0]?.id || null,
+      } 
+    });
+  }, [dispatch]);
+
+  const { syncStatus } = useCloudSync(state, handleProjectsLoaded);
   
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [batching, setBatching] = useState(false);
@@ -131,7 +154,7 @@ export default function App() {
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts - must be before conditional returns to follow hooks rules
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle shortcuts when typing in inputs
@@ -537,6 +560,25 @@ export default function App() {
     } finally { setBatching(false); }
   };
 
+  // If Supabase is configured but user isn't logged in, show login
+  if (isSupabaseConfigured() && !user && !authLoading) {
+    return <LoginScreen />;
+  }
+
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ink-950">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-josefin tracking-widest text-ember-500">
+            INK TRACKER
+          </h1>
+          <p className="text-steel-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
     <Sidebar
@@ -571,36 +613,56 @@ export default function App() {
     </h1>
     </div>
 
-    {/* Tab Navigation */}
-    <div className={`flex items-center gap-1 rounded-full border p-1 ${showGutters ? 'bg-gray-100 border-gray-300' : 'bg-ink-900 border-ink-700'}`}>
-      <button
-        onClick={() => setActiveTab('canvas')}
-        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
-          activeTab === 'canvas'
-            ? showGutters
-              ? 'bg-white text-black shadow-sm'
-              : 'bg-ember-500 text-ink-950 shadow-lg'
-            : showGutters
-              ? 'text-gray-600 hover:text-black'
-              : 'text-steel-400 hover:text-steel-200'
-        }`}
-      >
-        CANVAS
-      </button>
-      <button
-        onClick={() => setActiveTab('guide')}
-        className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
-          activeTab === 'guide'
-            ? showGutters
-              ? 'bg-white text-black shadow-sm'
-              : 'bg-ember-500 text-ink-950 shadow-lg'
-            : showGutters
-              ? 'text-gray-600 hover:text-black'
-              : 'text-steel-400 hover:text-steel-200'
-        }`}
-      >
-        HOW TO USE
-      </button>
+    {/* Tab Navigation and Auth Status */}
+    <div className="flex items-center gap-4">
+      <div className={`flex items-center gap-1 rounded-full border p-1 ${showGutters ? 'bg-gray-100 border-gray-300' : 'bg-ink-900 border-ink-700'}`}>
+        <button
+          onClick={() => setActiveTab('canvas')}
+          className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+            activeTab === 'canvas'
+              ? showGutters
+                ? 'bg-white text-black shadow-sm'
+                : 'bg-ember-500 text-ink-950 shadow-lg'
+              : showGutters
+                ? 'text-gray-600 hover:text-black'
+                : 'text-steel-400 hover:text-steel-200'
+          }`}
+        >
+          CANVAS
+        </button>
+        <button
+          onClick={() => setActiveTab('guide')}
+          className={`font-mono text-xs px-6 py-2 tracking-widest transition-all rounded-full ${
+            activeTab === 'guide'
+              ? showGutters
+                ? 'bg-white text-black shadow-sm'
+                : 'bg-ember-500 text-ink-950 shadow-lg'
+              : showGutters
+                ? 'text-gray-600 hover:text-black'
+                : 'text-steel-400 hover:text-steel-200'
+          }`}
+        >
+          HOW TO USE
+        </button>
+      </div>
+      
+      {/* Sync Status and Auth */}
+      {user && (
+        <div className="flex items-center gap-3">
+          <SyncIndicator status={syncStatus} />
+          <button 
+            onClick={signOut}
+            className={`font-mono text-xs px-3 py-1 tracking-widest transition-all rounded-full border ${
+              showGutters 
+                ? 'border-gray-300 text-gray-600 hover:text-black hover:bg-gray-100' 
+                : 'border-ink-700 text-steel-500 hover:text-ember-500 hover:border-ember-500'
+            }`}
+            title="Sign out"
+          >
+            LOGOUT
+          </button>
+        </div>
+      )}
     </div>
     </div>
 
@@ -1004,5 +1066,14 @@ function ZoomableCanvas({
       </DndContext>
     )}
     </div>
+  );
+}
+
+// Main App component with AuthProvider wrapper
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
