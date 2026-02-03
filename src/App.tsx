@@ -42,9 +42,7 @@ import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
-import { LoginScreen } from './components/LoginScreen';
 import { SyncIndicator } from './components/SyncIndicator';
-import { isSupabaseConfigured } from './services/supabase';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -570,10 +568,6 @@ function AppContent() {
       alert(`Batch Failed: ${e.message}`);
     } finally { setBatching(false); }
   };
-
-  if (isSupabaseConfigured() && !user && !loading) {
-    return <LoginScreen />;
-  }
 
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
