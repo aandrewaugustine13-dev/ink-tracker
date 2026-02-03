@@ -105,7 +105,7 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
 };
 
 function AppContent() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const [stateWithHistory, dispatchWithHistory] = useReducer(
     historyReducer,
     null,
@@ -571,7 +571,7 @@ function AppContent() {
     } finally { setBatching(false); }
   };
 
-  if (isSupabaseConfigured() && !user) {
+  if (isSupabaseConfigured() && !user && !loading) {
     return <LoginScreen />;
   }
 
