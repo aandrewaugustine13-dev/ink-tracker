@@ -10,7 +10,7 @@ import {
     TextElement,
     AspectRatio
 } from '../types';
-import { genId } from '../utils/helpers';
+import { genId, getDefaultAspectRatio } from '../utils/helpers';
 
 // Page template configurations
 const PAGE_TEMPLATES: Record<PageTemplate, { panels: Array<{ x: number; y: number; width: number; height: number; aspectRatio: AspectRatio }> }> = {
@@ -220,10 +220,12 @@ export function appReducer(state: AppState, action: Action): AppState {
                         const panelCount = pg.panels.length;
                         const col = panelCount % 3;
                         const row = Math.floor(panelCount / 3);
+                        // Get default aspect ratio based on project type
+                        const defaultAspectRatio = getDefaultAspectRatio(proj.projectType);
                         const newPan: Panel = {
                             id: genId(),
                             prompt: '',
-                            aspectRatio: AspectRatio.WIDE,
+                            aspectRatio: defaultAspectRatio,
                             characterIds: [],
                             textElements: [],
                             x: 40 + (col * 400),
