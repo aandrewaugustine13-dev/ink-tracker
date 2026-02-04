@@ -54,6 +54,7 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
             reader.onload = (ev) => {
                 setScript(ev.target?.result as string || '');
                 setResult(null);
+                setEditableCharacters([]);
             };
             reader.readAsText(file);
         }
@@ -93,7 +94,7 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
         </div>
         <textarea
         value={script}
-        onChange={(e) => { setScript(e.target.value); setResult(null); }}
+        onChange={(e) => { setScript(e.target.value); setResult(null); setEditableCharacters([]); }}
         placeholder={`# MY GRAPHIC NOVEL
 
 ## Issue #1: "The Beginning"
@@ -219,6 +220,7 @@ He draws his weapon.
                                 onClick={() => handleRemoveCharacter(char.name)}
                                 className="ml-auto w-5 h-5 flex items-center justify-center rounded-full bg-ink-900 hover:bg-red-500 text-steel-400 hover:text-white transition-all text-sm font-bold flex-shrink-0"
                                 title="Remove character"
+                                aria-label={`Remove character ${char.name}`}
                             >
                                 ×
                             </button>
