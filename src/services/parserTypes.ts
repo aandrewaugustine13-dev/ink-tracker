@@ -1,45 +1,35 @@
-/**
- * Shared type definitions for script parsers
- * All parsers (graphic novel, screenplay, etc.) output this standardized structure
- */
-
-export interface DialogueLine {
-  character: string;
-  text: string;
-  type: 'spoken' | 'voiceover' | 'caption' | 'thought';
+interface ParseResult {
+    pages: ParsedPage[];
+    characters: CharacterCount[];
+    visualMarkers: Record<string, number>;
+    errors: ParseError[];
 }
 
-export interface ParsedPanel {
-  panelNumber: number;
-  description: string; // The prompt text for image generation
-  characters: string[]; // Array of character names in this panel
-  dialogue: DialogueLine[]; // Array of dialogue lines
-  visualMarker?: string; // Optional visual marker (e.g., 'close', 'wide', 'establishing')
-  artistNotes?: string; // Optional notes for the artist
+interface ParsedPage {
+    pageNumber: number;
+    panels: ParsedPanel[];
 }
 
-export interface ParsedPage {
-  pageNumber: number;
-  panels: ParsedPanel[];
+interface ParsedPanel {
+    panelNumber: number;
+    description: string;
+    characters: CharacterCount[];
+    dialogue: DialogueLine[];
+    visualMarker?: string;
+    artistNotes?: string;
 }
 
-export interface CharacterCount {
-  name: string;
-  panelCount: number; // Number of panels this character appears in
+interface DialogueLine {
+    character: string;
+    text: string;
+    type: 'spoken' | 'voiceover' | 'caption' | 'thought';
 }
 
-export interface VisualMarkers {
-  [markerType: string]: number; // Count of each visual marker type detected
+interface CharacterCount {
+    name: string;
+    panelCount: number;
 }
 
-export interface ParseError {
-  message: string;
-  line?: number;
-}
-
-export interface ParseResult {
-  pages: ParsedPage[];
-  characters: CharacterCount[];
-  visualMarkers: VisualMarkers;
-  errors: ParseError[];
+interface ParseError {
+    message: string;
 }
