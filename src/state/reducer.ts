@@ -104,6 +104,7 @@ export function appReducer(state: AppState, action: Action): AppState {
                 style: 'classic-noir',
                 issueType: 'issue',
                 imageProvider: 'gemini',
+                projectType: action.projectType || 'comic',
                 fluxModel: 'fal-ai/flux-pro',
                 characters: [],
                 issues: [{ id: genId(), title: 'Issue #1', pages: [{ id: genId(), number: 1, panels: [] }] }]

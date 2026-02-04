@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppState } from '../types';
 import { Action } from '../state/actions';
 import { Icons } from '../constants';
+import NewProjectModal from './NewProjectModal';
 
 interface ProjectHubProps {
     state: AppState;
@@ -11,6 +12,7 @@ interface ProjectHubProps {
 
 const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [showNewProjectModal, setShowNewProjectModal] = useState(false);
     const [localGeminiKey, setLocalGeminiKey] = useState<string>('');
     const [localLeonardoKey, setLocalLeonardoKey] = useState<string>('');
     const [localGrokKey, setLocalGrokKey] = useState<string>('');
@@ -203,10 +205,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
         ))}
 
         <button
-        onClick={() => {
-            const name = prompt("Project Title:");
-            if (name) dispatch({ type: 'ADD_PROJECT', title: name });
-        }}
+        onClick={() => setShowNewProjectModal(true)}
         className="p-8 rounded-2xl border-2 border-dashed border-ink-700 hover:border-ember-500 hover:bg-ember-500/5 flex flex-col items-center justify-center gap-6 text-steel-500 hover:text-ember-500 transition-all group min-h-[220px]"
         >
         <div className="w-16 h-16 rounded-full border-2 border-dashed border-steel-800 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -216,6 +215,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
         </button>
         </div>
         </div>
+        {showNewProjectModal && <NewProjectModal onClose={() => setShowNewProjectModal(false)} dispatch={dispatch} />}
         </div>
     );
 };
