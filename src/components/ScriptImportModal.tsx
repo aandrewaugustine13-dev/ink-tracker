@@ -23,17 +23,28 @@ const MARKER_COLORS: Record<VisualMarker, string> = {
 export function ScriptImportModal({ onClose, onImport }: Props) {
     const [script, setScript] = useState('');
     const [result, setResult] = useState<ParseResult | null>(null);
+    const [editableCharacters, setEditableCharacters] = useState<ParseResult['characters']>([]);
 
     const handleParse = () => {
         const parsed = parseScript(script);
         setResult(parsed);
+        setEditableCharacters(parsed.characters);
     };
 
     const handleImport = () => {
         if (result?.success) {
-            onImport(result, script);
+            // Create a new result object with the filtered characters
+            const filteredResult = {
+                ...result,
+                characters: editableCharacters
+            };
+            onImport(filteredResult, script);
             onClose();
         }
+    };
+
+    const handleRemoveCharacter = (characterName: string) => {
+        setEditableCharacters(prev => prev.filter(char => char.name !== characterName));
     };
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,6 +54,7 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
             reader.onload = (ev) => {
                 setScript(ev.target?.result as string || '');
                 setResult(null);
+                setEditableCharacters([]);
             };
             reader.readAsText(file);
         }
@@ -82,7 +94,7 @@ export function ScriptImportModal({ onClose, onImport }: Props) {
         </div>
         <textarea
         value={script}
-        onChange={(e) => { setScript(e.target.value); setResult(null); }}
+        onChange={(e) => { setScript(e.target.value); setResult(null); setEditableCharacters([]); }}
         placeholder={`# MY GRAPHIC NOVEL
 
 ## Issue #1: "The Beginning"
@@ -173,7 +185,7 @@ He draws his weapon.
                     <p className="text-[9px] font-mono text-steel-500 uppercase">Panels</p>
                     </div>
                     <div className="bg-ink-800 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-display text-ember-500">{result.characters.length}</p>
+                    <p className="text-2xl font-display text-ember-500">{editableCharacters.length}</p>
                     <p className="text-[9px] font-mono text-steel-500 uppercase">Characters</p>
                     </div>
                     </div>
@@ -194,7 +206,7 @@ He draws his weapon.
                     <div className="bg-ink-800 rounded-lg p-4">
                     <p className="text-[10px] font-mono text-steel-500 uppercase mb-2">Cast Detected</p>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {result.characters.map(char => (
+                    {editableCharacters.map(char => (
                         <div key={char.name} className="flex items-start gap-2">
                             <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-ink-900 text-steel-300 flex-shrink-0">
                                 {char.name} <span className="text-steel-600">({char.lineCount})</span>
@@ -204,6 +216,14 @@ He draws his weapon.
                                     {char.description.slice(0, 80)}{char.description.length > 80 ? '...' : ''}
                                 </span>
                             )}
+                            <button
+                                onClick={() => handleRemoveCharacter(char.name)}
+                                className="ml-auto w-5 h-5 flex items-center justify-center rounded-full bg-ink-900 hover:bg-red-500 text-steel-400 hover:text-white transition-all text-sm font-bold flex-shrink-0"
+                                title="Remove character"
+                                aria-label={`Remove character ${char.name}`}
+                            >
+                                ×
+                            </button>
                         </div>
                     ))}
                     </div>
