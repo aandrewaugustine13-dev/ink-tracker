@@ -1,5 +1,15 @@
 import { AspectRatio } from '../types';
+import {
+  ParseResult as SharedParseResult,
+  ParsedPage as SharedParsedPage,
+  ParsedPanel as SharedParsedPanel,
+  DialogueLine,
+  CharacterCount,
+  VisualMarkers,
+  ParseError
+} from './parserTypes';
 
+// Export legacy types for backward compatibility with existing components
 export type VisualMarker = 'standard' | 'echo' | 'hitch' | 'overflow' | 'shattered' | 'split' | 'splash' | 'inset' | 'large' | 'full-width';
 
 export interface ParsedBubble {
@@ -16,7 +26,7 @@ export interface ParsedPanel {
     artistNotes: string[];
     visualMarker: VisualMarker;
     aspectRatio: AspectRatio;
-    panelModifier?: string; // e.g., "Split Panel", "Large", "micro-flash inset"
+    panelModifier?: string;
 }
 
 export interface ParsedPage {
@@ -42,6 +52,7 @@ export interface ParsedIssue {
     artistNotes?: string;
 }
 
+// Legacy ParseResult for backward compatibility
 export interface ParseResult {
     success: boolean;
     issue?: ParsedIssue;
@@ -78,70 +89,52 @@ function parsePageNumber(str: string): number {
 
 // ============= PATTERN DEFINITIONS =============
 
-// Page patterns - supports multiple formats
-// "### PAGE ONE (5 Panels)", "**PAGE ONE**", "PAGE 1", "PAGE ONE"
 const PAGE_PATTERNS = [
     /^#{1,3}\s*PAGE\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|\d+)(?:\s*\([^)]*\))?/i,
     /^\*\*PAGE\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|\d+)\*\*/i,
     /^(?:PAGE|PG)\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|\d+)(?:\s*[:\-\.])?/i,
 ];
 
-// Panel patterns - supports multiple formats
-// "**Panel 1**", "**Panel 1 (Split Panel)**", "Panel 1", "**Panel 1 (Large)**"
 const PANEL_PATTERNS = [
     /^\*\*Panel\s+(\d+)(?:\s*\(([^)]+)\))?\*\*\s*(.*)/i,
     /^\*\*Panel\s+(\d+)\*\*(?:\s*\(([^)]+)\))?\s*(.*)/i,
     /^Panel\s+(\d+)(?:\s*[\[\(]([^\]\)]+)[\]\)])?\s*(.*)/i,
-    /^(?:PANEL|P|FRAME|FR|BLOCK)\s*(\d+)\s*(?:\[([^\]]+)\]|\(([^)]+)\))?(?:\s*[:\-\.])?\s*(.*)/i,
+    /^(?:PANEL|P|FRAME|FR|BLOCK)\s*(\d+)\s*(?:\[([^\]]+)]|\(([^)]+)\))?(?:\s*[:\-\.])?\s*(.*)/i,
 ];
 const NUMERIC_PANEL_START = /^(\d+)\.\s*(.*)/;
 
-// Dialogue patterns - multiple formats
-// "> CHARACTER: text", "**CHARACTER:** text", "**CHARACTER (modifier):** text", "> **CHARACTER:** text"
-const BLOCKQUOTE_DIALOGUE = /^>\s*(?:\*\*)?([A-Z][A-Z0-9\s\-'\.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*(?:\*\*)?\s*[:\-]\s*(.+)$/;
-const BOLD_DIALOGUE = /^\*\*([A-Z][A-Z0-9\s\-'\.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*[:\-]\*\*\s*(.+)$/;
-const BOLD_DIALOGUE_ALT = /^\*\*([A-Z][A-Z0-9\s\-'\.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\*\*\s*[:\-]\s*(.+)$/;
-const STANDARD_DIALOGUE = /^([A-Z][A-Z0-9\s\-'\.]{1,25})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*[:\-\—]\s*(.+)$/;
+const BLOCKQUOTE_DIALOGUE = /^>\s*(?:\*\*)?([A-Z][A-Z0-9\s\-'.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*(?:\*\*)?\s*[:\-]\s*(.+)$/;
+const BOLD_DIALOGUE = /^\*\*([A-Z][A-Z0-9\s\-'.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*[:\-]\*\*\s*(.+)$/;
+const BOLD_DIALOGUE_ALT = /^\*\*([A-Z][A-Z0-9\s\-'.]{0,30})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\*\*\s*[:\-]\s*(.+)$/;
+const STANDARD_DIALOGUE = /^([A-Z][A-Z0-9\s\-'.]{1,25})(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*[:\-\—]\s*(.+)$/;
 
-// Caption patterns
-// "> CAPTION: text", "**CAPTION:** text"
 const BLOCKQUOTE_CAPTION = /^>\s*(?:\*\*)?CAPTION(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*(?:\*\*)?\s*[:\-]\s*(.+)$/i;
 const BOLD_CAPTION = /^\*\*CAPTION(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*[:\-]\*\*\s*(.+)$/i;
 
-// SFX patterns
-// "> SFX: text", "**SFX:** text"
 const BLOCKQUOTE_SFX = /^>\s*(?:\*\*)?SFX\s*(?:\*\*)?\s*[:\-]\s*(.+)$/i;
 const BOLD_SFX = /^\*\*SFX\s*[:\-]\*\*\s*(.+)$/i;
 const INLINE_SFX = /^SFX\s*[:\-]\s*(.+)$/i;
 
-// Screen/Wall/Label text patterns
-// "> ON SCREEN: text", "> ON WALL: text", "> LABEL: text", "> ON PHONE: text"
 const SCREEN_TEXT = /^>\s*(?:\*\*)?(?:ON\s+SCREEN|ON\s+WALL|ON\s+BOARD|LABEL|ON\s+PHONE|ON\s+TV|READOUT|DRONE\s+SCREEN|DRONE\s+FEED)(?:\s*[\(\[<]([^\)\]>]+)[\)\]>])?\s*(?:\*\*)?\s*[:\-]\s*(.+)$/i;
 
-// Thought caption pattern
 const THOUGHT_MODIFIERS = ['thought', 'thought caption', 'thinking', 'inner', 'v.o.', 'vo', 'internal'];
 
-// Artist notes patterns
 const ARTIST_NOTE_PATTERNS = [
-    /^\*\(([^)]+)\)\*$/,  // *(ARTIST NOTE: ...)*
-    /^\(([^)]+)\)$/,      // (ARTIST NOTE: ...)
+    /^\*\(([^)]+)\)\*$/,
+    /^\(([^)]+)\)$/,  
     /^(?:Artist\s*note|NOTE|PROMPT|REF)\s*[:\-]\s*(.+)$/i,
 ];
 
-// Issue/Act header patterns
 const ISSUE_HEADER = /^#\s+(.+)$/;
-const ISSUE_NUMBER = /^##\s+Issue\s+#?(\d+)(?:\s*[:\-]\s*["']?(.+?)["']?)?$/i;
+const ISSUE_NUMBER = /^##\s+Issue\s+#?(\d+)(?:\s*[:\-]\s*["]?(.+?)["]?)?$/i;
 const ACT_HEADER = /^##\s+(?:ACT\s+)?([IVXLCDM]+|[A-Z]+(?:\s+[IVXLCDM]+)?)\s*[:\-]?\s*(.*)$/i;
 const COLD_OPEN = /^##\s+COLD\s+OPEN\s*[:\-]?\s*(.*)$/i;
 
-// Cast of characters section
 const CAST_HEADER = /^###\s+CAST\s+OF\s+CHARACTERS/i;
-const CHARACTER_DEFINITION = /^\*\*([A-Z][A-Z\s\-'\.]+)\*\*\s+(.+)$/;
+const CHARACTER_DEFINITION = /^\*\*([A-Z][A-Z\s\-'.]+)\*\*\s+(.+)$/;
 
-// Timeline caption
 const TIMELINE_CAPTION = /^>\s*CAPTION:\s*(.+)$/i;
 
-// Inset/flash patterns
 const INSET_PATTERN = /(?:inset|micro-flash|flash|intercut)/i;
 
 function detectVisualMarker(text: string, modifiers: string): VisualMarker {
@@ -179,12 +172,10 @@ function isPhoneModifier(modifier: string): boolean {
 }
 
 function cleanDialogueText(text: string): string {
-    // Remove trailing markdown formatting
     return text.replace(/\*+$/, '').trim();
 }
 
 function extractCharacterFromLine(line: string): { character: string; modifier: string; text: string; type: 'dialogue' | 'thought' | 'phone' } | null {
-    // Try blockquote dialogue: > CHARACTER: text or > **CHARACTER:** text
     let match = line.match(BLOCKQUOTE_DIALOGUE);
     if (match) {
         const [, char, mod, txt] = match;
@@ -192,7 +183,6 @@ function extractCharacterFromLine(line: string): { character: string; modifier: 
         return { character: char.trim().toUpperCase(), modifier: mod || '', text: cleanDialogueText(txt), type };
     }
 
-    // Try bold dialogue: **CHARACTER:** text or **CHARACTER (mod):** text
     match = line.match(BOLD_DIALOGUE);
     if (match) {
         const [, char, mod, txt] = match;
@@ -200,7 +190,6 @@ function extractCharacterFromLine(line: string): { character: string; modifier: 
         return { character: char.trim().toUpperCase(), modifier: mod || '', text: cleanDialogueText(txt), type };
     }
 
-    // Try bold dialogue alt: **CHARACTER** text or **CHARACTER (mod)**: text
     match = line.match(BOLD_DIALOGUE_ALT);
     if (match) {
         const [, char, mod, txt] = match;
@@ -208,11 +197,9 @@ function extractCharacterFromLine(line: string): { character: string; modifier: 
         return { character: char.trim().toUpperCase(), modifier: mod || '', text: cleanDialogueText(txt), type };
     }
 
-    // Try standard dialogue: CHARACTER: text
     match = line.match(STANDARD_DIALOGUE);
     if (match) {
         const [, char, mod, txt] = match;
-        // Skip if it looks like a section header
         if (['CAPTION', 'SFX', 'ON SCREEN', 'ON WALL', 'LABEL', 'NOTE', 'ARTIST'].some(k => char.toUpperCase().includes(k))) {
             return null;
         }
@@ -230,7 +217,6 @@ function extractCaption(line: string): string | null {
     match = line.match(BOLD_CAPTION);
     if (match) return match[2].trim();
 
-    // Simple > CAPTION: text
     match = line.match(TIMELINE_CAPTION);
     if (match) return match[1].trim();
 
@@ -266,6 +252,74 @@ function extractArtistNote(line: string): string | null {
     return null;
 }
 
+/**
+ * Main parse function exported as parseComicScript for the new interface
+ * Returns the standardized ParseResult from parserTypes.ts
+ */
+export function parseComicScript(scriptText: string): SharedParseResult {
+    const legacyResult = parseScript(scriptText);
+    
+    // Convert legacy format to new shared format
+    const pages: SharedParsedPage[] = legacyResult.pages.map(page => ({
+        pageNumber: page.pageNumber,
+        panels: page.panels.map(panel => {
+            // Extract characters from bubbles
+            const characters = Array.from(new Set(
+                panel.bubbles
+                    .filter(b => b.character)
+                    .map(b => b.character!)
+            ));
+            
+            // Convert bubbles to dialogue array
+            const dialogue: DialogueLine[] = panel.bubbles
+                .filter(b => b.character)
+                .map(b => ({
+                    character: b.character!,
+                    text: b.text,
+                    type: b.type === 'dialogue' ? 'spoken' as const :
+                          b.type === 'thought' ? 'thought' as const :
+                          b.type === 'caption' ? 'caption' as const :
+                          'voiceover' as const
+                }));
+            
+            return {
+                panelNumber: panel.panelNumber,
+                description: panel.description,
+                characters,
+                dialogue,
+                visualMarker: panel.visualMarker !== 'standard' ? panel.visualMarker : undefined,
+                artistNotes: panel.artistNotes.join(' ') || undefined
+            };
+        })
+    }));
+    
+    const characters: CharacterCount[] = legacyResult.characters.map(char => ({
+        name: char.name,
+        panelCount: char.lineCount
+    }));
+    
+    const visualMarkers: VisualMarkers = {};
+    legacyResult.pages.forEach(page => {
+        page.panels.forEach(panel => {
+            if (panel.visualMarker !== 'standard') {
+                visualMarkers[panel.visualMarker] = (visualMarkers[panel.visualMarker] || 0) + 1;
+            }
+        });
+    });
+    
+    const errors: ParseError[] = legacyResult.errors.map(err => ({ message: err }));
+    
+    return {
+        pages,
+        characters,
+        visualMarkers,
+        errors
+    };
+}
+
+/**
+ * Legacy parseScript function for backward compatibility with ScriptImportModal
+ */
 export function parseScript(scriptText: string): ParseResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -340,17 +394,14 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Skip horizontal rules
             if (line === '---' || line === '***') continue;
 
-            // Issue title: # TITLE
             const issueHeaderMatch = line.match(ISSUE_HEADER);
             if (issueHeaderMatch && !issueInfo) {
                 issueInfo = { title: issueHeaderMatch[1].trim() };
                 continue;
             }
 
-            // Issue number: ## Issue #2: "THE BLOOM"
             const issueNumMatch = line.match(ISSUE_NUMBER);
             if (issueNumMatch) {
                 if (!issueInfo) issueInfo = { title: '' };
@@ -359,7 +410,6 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Writer line: **Written by X**
             if (line.startsWith('**Written by')) {
                 const writerMatch = line.match(/\*\*Written by\s+(.+)\*\*/i);
                 if (writerMatch && issueInfo) {
@@ -368,16 +418,14 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Page count line: 28 Pages | Prestige Format
-            if (line.match(/^\d+\s+Pages?\s*\|/i)) {
-                const pageCountMatch = line.match(/^(\d+)\s+Pages?/i);
+            if (line.match(/^\d+\s+Pages?\s*|/i)) {
+                const pageCountMatch = line.match(/^ (\d+)\s+Pages?/i);
                 if (pageCountMatch && issueInfo) {
                     issueInfo.pageCount = parseInt(pageCountMatch[1], 10);
                 }
                 continue;
             }
 
-            // Timeline line: **Timeline: X**
             if (line.startsWith('**Timeline:')) {
                 const timelineMatch = line.match(/\*\*Timeline:\s*(.+)\*\*/i);
                 if (timelineMatch && issueInfo) {
@@ -386,19 +434,16 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Cast of Characters section header
             if (CAST_HEADER.test(line)) {
                 inCastSection = true;
                 continue;
             }
 
-            // Artist/Colorist notes section header
             if (line.match(/^###\s*ARTIST/i) || line.match(/^###\s*COLORIST/i)) {
                 inArtistNotes = true;
                 continue;
             }
 
-            // Character definition in cast section
             if (inCastSection) {
                 const charDefMatch = line.match(CHARACTER_DEFINITION);
                 if (charDefMatch) {
@@ -412,13 +457,11 @@ export function parseScript(scriptText: string): ParseResult {
                     }
                     continue;
                 }
-                // End cast section on next major header
                 if (line.startsWith('##') || line.startsWith('###')) {
                     inCastSection = false;
                 }
             }
 
-            // Page detection
             let pageMatch: RegExpMatchArray | null = null;
             for (const pattern of PAGE_PATTERNS) {
                 pageMatch = line.match(pattern);
@@ -432,7 +475,6 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Panel detection
             let panelMatch: RegExpMatchArray | null = null;
             for (const pattern of PANEL_PATTERNS) {
                 panelMatch = line.match(pattern);
@@ -445,9 +487,7 @@ export function parseScript(scriptText: string): ParseResult {
             if (panelMatch) {
                 saveCurrentPanel();
                 currentPanelNumber = parseInt(panelMatch[1], 10);
-                // Extract modifier from various positions
                 currentPanelModifier = (panelMatch[2] || panelMatch[3] || '').trim();
-                // Any remaining text is description
                 const restOfLine = (panelMatch[4] || panelMatch[2] || '').trim();
                 if (restOfLine && !currentPanelModifier) {
                     currentPanelDescription = restOfLine;
@@ -459,37 +499,31 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            // Inside a panel, parse content
             if (currentPanelNumber > 0) {
-                // Artist note check
                 const artistNote = extractArtistNote(line);
                 if (artistNote) {
                     currentPanelArtistNotes.push(artistNote);
                     continue;
                 }
 
-                // Caption check
                 const caption = extractCaption(line);
                 if (caption) {
                     currentPanelBubbles.push({ type: 'caption', text: caption });
                     continue;
                 }
 
-                // SFX check
                 const sfx = extractSFX(line);
                 if (sfx) {
                     currentPanelBubbles.push({ type: 'sfx', text: sfx });
                     continue;
                 }
 
-                // Screen/Wall text check
                 const screenText = extractScreenText(line);
                 if (screenText) {
                     currentPanelBubbles.push({ type: 'screen-text', text: screenText.text, modifier: screenText.subtype });
                     continue;
                 }
 
-                // Dialogue check
                 const dialogue = extractCharacterFromLine(line);
                 if (dialogue) {
                     const existing = characterMap.get(dialogue.character);
@@ -508,7 +542,6 @@ export function parseScript(scriptText: string): ParseResult {
                     continue;
                 }
 
-                // Indented dialogue (screenplay style)
                 if (pendingCharacter && (rawLine.startsWith('  ') || rawLine.startsWith('\t'))) {
                     const text = line.trim();
                     const existing = characterMap.get(pendingCharacter);
@@ -525,20 +558,16 @@ export function parseScript(scriptText: string): ParseResult {
                     continue;
                 }
 
-                // Potential character line (all caps, for screenplay style)
                 if (/^[A-Z][A-Z\s\-']{1,25}$/.test(line) && !line.includes(':')) {
                     pendingCharacter = line.trim().toUpperCase();
                     continue;
                 }
 
-                // Inset marker
                 if (INSET_PATTERN.test(line)) {
                     currentPanelDescription += ' ' + line;
                     continue;
                 }
 
-                // Fallback: append to description
-                // Skip blockquote lines that aren't dialogue/caption/sfx (likely continuation)
                 if (line.startsWith('>')) {
                     const cleanedLine = line.replace(/^>\s*/, '').trim();
                     if (cleanedLine) {
@@ -552,7 +581,6 @@ export function parseScript(scriptText: string): ParseResult {
                     }
                 }
             } else {
-                // Not in a panel yet - could be artist notes at page level
                 if (inArtistNotes && currentPageNumber > 0) {
                     currentPageNotes += line + '\n';
                 }
@@ -568,7 +596,6 @@ export function parseScript(scriptText: string): ParseResult {
 
         pages.sort((a, b) => a.pageNumber - b.pageNumber);
 
-        // Build character list, filtering out system keywords
         const systemKeywords = ['CAPTION', 'SFX', 'TITLE', 'SUBTITLE', 'TEXT', 'NARRATION', 'DESCRIPTION', 'ACTION', 'SOUND', 'ON SCREEN', 'ON WALL', 'LABEL', 'READOUT'];
         const characters: ParsedCharacter[] = Array.from(characterMap.entries())
             .map(([name, data]) => ({
@@ -578,7 +605,7 @@ export function parseScript(scriptText: string): ParseResult {
                 firstAppearance: data.first || undefined,
             }))
             .filter(c => !systemKeywords.some(k => c.name.toUpperCase().includes(k)))
-            .filter(c => c.lineCount > 0 || c.description) // Keep characters with lines OR descriptions
+            .filter(c => c.lineCount > 0 || c.description)
             .sort((a, b) => b.lineCount - a.lineCount);
 
         return { success: true, issue: issueInfo, pages, characters, errors, warnings };
