@@ -489,11 +489,13 @@ function AppContent() {
     const newPages: Page[] = result.pages.map((parsedPage) => ({
       id: genId(),
       number: parsedPage.pageNumber,
-      panels: parsedPage.panels.map(parsedPanel => ({
+      panels: parsedPage.panels.map((parsedPanel, index) => ({
         id: genId(),
         prompt: parsedPanel.description,
         aspectRatio: parsedPanel.aspectRatio,
         characterIds: [],
+        x: (index % 3) * 400,
+        y: Math.floor(index / 3) * 500,
         textElements: parsedPanel.bubbles.map((bubble, idx) => ({
           id: genId(),
           type: bubble.type === 'dialogue' ? 'dialogue' as const : bubble.type === 'thought' ? 'thought' as const : 'caption' as const,
