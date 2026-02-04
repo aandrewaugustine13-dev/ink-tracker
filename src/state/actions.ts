@@ -6,7 +6,7 @@ export type PageTemplate = '2x2' | '3x3' | '2x3' | 'manga-right' | 'manga-left' 
 export type Action =
 | { type: 'HYDRATE'; payload: AppState }
 | { type: 'SET_ACTIVE_PROJECT'; id: string }
-| { type: 'ADD_PROJECT'; title: string }
+| { type: 'ADD_PROJECT'; title: string; projectType?: 'comic' | 'screenplay' | 'stage-play' | 'tv-series' }
 | { type: 'UPDATE_PROJECT'; id: string; updates: Partial<Project> }
 | { type: 'UPDATE_PROJECT_GEMINI_KEY'; projectId: string; apiKey: string }
 | { type: 'UPDATE_PROJECT_LEONARDO_KEY'; projectId: string; apiKey: string }

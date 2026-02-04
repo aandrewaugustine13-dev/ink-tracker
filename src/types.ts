@@ -89,6 +89,7 @@ export interface Project {
     style: string;
     issueType: 'issue' | 'chapter';
     imageProvider: ImageProvider;
+    projectType?: 'comic' | 'screenplay' | 'stage-play' | 'tv-series';
     geminiApiKey?: string;
     leonardoApiKey?: string;
     grokApiKey?: string;

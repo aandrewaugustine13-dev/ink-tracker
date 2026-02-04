@@ -23,6 +23,7 @@ export const createInitialState = (): AppState => {
         style: 'classic-noir',
         issueType: 'issue',
         imageProvider: 'gemini',
+        projectType: 'comic',
         fluxModel: 'fal-ai/flux-pro',
         characters: [],
         issues: [
@@ -54,6 +55,7 @@ export const normalizeProjects = (projects: Project[]): Project[] => {
             ...proj,
             issueType: proj.issueType || 'issue',
             imageProvider: proj.imageProvider || 'gemini',
+            projectType: proj.projectType || 'comic',
             fluxModel: proj.fluxModel || 'fal-ai/flux-pro',
             characters: proj.characters || [],
             issues: (proj.issues || []).map((iss) => ({
