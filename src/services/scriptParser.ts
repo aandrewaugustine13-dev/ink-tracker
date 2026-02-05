@@ -329,7 +329,12 @@ export function parseScript(scriptText: string): ParseResult {
 
     // Debug logging
     console.log('[parseScript] Called with text length:', scriptText.length);
-    console.log('[parseScript] First 300 chars:', JSON.stringify(scriptText.substring(0, 300)));
+    console.log('[parseScript] First 300 chars (JSON escaped):', JSON.stringify(scriptText.substring(0, 300)));
+    
+    // Check for hidden characters in the first line
+    const firstLine = scriptText.split(/[\r\n]/)[0];
+    console.log('[parseScript] First line raw:', firstLine);
+    console.log('[parseScript] First line char codes:', Array.from(firstLine).map(c => c.charCodeAt(0)));
 
     try {
         const normalizedText = scriptText
@@ -338,7 +343,18 @@ export function parseScript(scriptText: string): ParseResult {
 
         const allLines = normalizedText.split('\n');
         console.log('[parseScript] Line count:', allLines.length);
-        console.log('[parseScript] First 5 lines:', allLines.slice(0, 5));
+        console.log('[parseScript] First 5 lines (trimmed):', allLines.slice(0, 5).map(l => l.trim()));
+        
+        // Test if first non-empty line matches PAGE pattern
+        const firstNonEmpty = allLines.find(l => l.trim().length > 0);
+        if (firstNonEmpty) {
+            const trimmed = firstNonEmpty.trim();
+            console.log('[parseScript] First non-empty line:', JSON.stringify(trimmed));
+            for (let i = 0; i < PAGE_PATTERNS.length; i++) {
+                const match = trimmed.match(PAGE_PATTERNS[i]);
+                console.log(`[parseScript] PAGE_PATTERN[${i}] test:`, match ? `MATCH: ${match[1]}` : 'no match');
+            }
+        }
 
         let currentPageNumber = 0;
         let currentPagePanels: ParsedPanel[] = [];
