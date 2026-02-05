@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { parseScript, ParseResult, VisualMarker } from '../services/scriptParser';
+import { parseScreenplay } from '../services/screenplayParser';
+import { parseStagePlay } from '../services/stagePlayParser';
+import { parseTVScript } from '../services/tvSeriesParser';
 import { Project } from '../types';
 
 interface Props {
@@ -27,7 +30,117 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
     const [editableCharacters, setEditableCharacters] = useState<ParseResult['characters']>([]);
 
     const handleParse = () => {
-        const parsed = parseScript(script);
+        let parsed: ParseResult;
+        
+        // Select the appropriate parser based on project type
+        switch (project.projectType) {
+            case 'screenplay':
+                // parseScreenplay returns a different format, we need to adapt it
+                const screenplayResult = parseScreenplay(script);
+                parsed = {
+                    success: screenplayResult.errors.length === 0 || screenplayResult.pages.length > 0,
+                    pages: screenplayResult.pages.map(page => ({
+                        pageNumber: page.pageNumber,
+                        panels: page.panels.map(panel => ({
+                            panelNumber: panel.panelNumber,
+                            description: panel.description,
+                            bubbles: panel.dialogue.map(d => ({
+                                type: d.type === 'spoken' ? 'dialogue' as const : 
+                                      d.type === 'voiceover' ? 'caption' as const :
+                                      d.type as 'dialogue' | 'caption' | 'thought' | 'sfx' | 'screen-text' | 'phone',
+                                text: d.text,
+                                character: d.character,
+                                modifier: d.parenthetical
+                            })),
+                            artistNotes: panel.artistNotes ? [panel.artistNotes] : [],
+                            visualMarker: (panel.visualMarker || 'standard') as VisualMarker,
+                            aspectRatio: 'wide' as any // Screenplays default to 16:9/wide
+                        })),
+                        pageNotes: page.location ? `${page.sceneType || ''} ${page.location} - ${page.timeOfDay || ''}`.trim() : undefined
+                    })),
+                    characters: screenplayResult.characters.map(c => ({
+                        name: c.name,
+                        lineCount: c.panelCount,
+                        description: c.description
+                    })),
+                    errors: screenplayResult.errors.map(e => e.message),
+                    warnings: []
+                };
+                break;
+                
+            case 'stage-play':
+                const stageResult = parseStagePlay(script);
+                parsed = {
+                    success: stageResult.errors.length === 0 || stageResult.pages.length > 0,
+                    pages: stageResult.pages.map(page => ({
+                        pageNumber: page.pageNumber,
+                        panels: page.panels.map(panel => ({
+                            panelNumber: panel.panelNumber,
+                            description: panel.description,
+                            bubbles: panel.dialogue.map(d => ({
+                                type: d.type === 'spoken' ? 'dialogue' as const : 
+                                      d.type === 'voiceover' ? 'caption' as const :
+                                      d.type as 'dialogue' | 'caption' | 'thought' | 'sfx' | 'screen-text' | 'phone',
+                                text: d.text,
+                                character: d.character,
+                                modifier: d.parenthetical
+                            })),
+                            artistNotes: panel.artistNotes ? [panel.artistNotes] : [],
+                            visualMarker: (panel.visualMarker || 'standard') as VisualMarker,
+                            aspectRatio: 'wide' as any // Stage plays use wide aspect for blocking
+                        })),
+                        pageNotes: page.actNumber ? `Act ${page.actNumber}` : undefined
+                    })),
+                    characters: stageResult.characters.map(c => ({
+                        name: c.name,
+                        lineCount: c.panelCount,
+                        description: c.description
+                    })),
+                    errors: stageResult.errors.map(e => e.message),
+                    warnings: []
+                };
+                break;
+                
+            case 'tv-series':
+                const tvResult = parseTVScript(script);
+                parsed = {
+                    success: tvResult.errors.length === 0 || tvResult.pages.length > 0,
+                    pages: tvResult.pages.map(page => ({
+                        pageNumber: page.pageNumber,
+                        panels: page.panels.map(panel => ({
+                            panelNumber: panel.panelNumber,
+                            description: panel.description,
+                            bubbles: panel.dialogue.map(d => ({
+                                type: d.type === 'spoken' ? 'dialogue' as const : 
+                                      d.type === 'voiceover' ? 'caption' as const :
+                                      d.type as 'dialogue' | 'caption' | 'thought' | 'sfx' | 'screen-text' | 'phone',
+                                text: d.text,
+                                character: d.character,
+                                modifier: d.parenthetical
+                            })),
+                            artistNotes: panel.artistNotes ? [panel.artistNotes] : [],
+                            visualMarker: (panel.visualMarker || 'standard') as VisualMarker,
+                            aspectRatio: 'wide' as any // TV defaults to 16:9/wide
+                        })),
+                        pageNotes: page.location ? `${page.sceneType || ''} ${page.location} - ${page.timeOfDay || ''}`.trim() : undefined
+                    })),
+                    characters: tvResult.characters.map(c => ({
+                        name: c.name,
+                        lineCount: c.panelCount,
+                        description: c.description
+                    })),
+                    errors: tvResult.errors.map(e => e.message),
+                    warnings: []
+                };
+                break;
+                
+            case 'comic':
+            default:
+                // Use the existing comic parser
+                parsed = parseScript(script);
+                break;
+        }
+        
         setResult(parsed);
         setEditableCharacters(parsed.characters);
     };

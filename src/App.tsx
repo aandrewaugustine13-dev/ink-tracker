@@ -861,7 +861,7 @@ function AppContent() {
     </TransformWrapper>
 
     {projectsOpen && <ProjectHub state={state} dispatch={dispatch} onClose={() => setProjectsOpen(false)} />}
-    {showScriptImport && <ScriptImportModal onClose={() => setShowScriptImport(false)} onImport={handleScriptImport} />}
+    {showScriptImport && activeProject && <ScriptImportModal project={activeProject} onClose={() => setShowScriptImport(false)} onImport={handleScriptImport} />}
     {showCharacterBank && activeProject && (
       <CharacterBank 
         characters={activeProject.characters} 
