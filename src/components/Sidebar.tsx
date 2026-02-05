@@ -477,13 +477,52 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                     SET
                                 </button>
                             </div>
-                            <p className="text-[8px] text-steel-600 italic">
-                                {activeProject?.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
-                                 activeProject?.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
-                                 activeProject?.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
-                                 activeProject?.imageProvider === 'fal' ? 'Get key from fal.ai' :
-                                 activeProject?.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
-                            </p>
+                            {activeProject?.imageProvider === 'gemini' ? (
+                                <a 
+                                    href="https://aistudio.google.com/app/apikey" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from ai.google.dev
+                                </a>
+                            ) : activeProject?.imageProvider === 'leonardo' ? (
+                                <a 
+                                    href="https://leonardo.ai/settings" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from leonardo.ai
+                                </a>
+                            ) : activeProject?.imageProvider === 'grok' ? (
+                                <a 
+                                    href="https://console.x.ai" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from console.x.ai (experimental)
+                                </a>
+                            ) : activeProject?.imageProvider === 'fal' ? (
+                                <a 
+                                    href="https://fal.ai/dashboard/keys" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from fal.ai
+                                </a>
+                            ) : activeProject?.imageProvider === 'seaart' ? (
+                                <a 
+                                    href="https://seaart.ai/api" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from seaart.ai/api
+                                </a>
+                            ) : null}
                         </div>
                     </div>
                 </div>

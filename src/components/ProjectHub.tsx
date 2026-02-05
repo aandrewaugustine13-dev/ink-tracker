@@ -191,13 +191,52 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 Save
                 </button>
                 </div>
-                <p className="text-[8px] text-steel-600 italic mt-1">
-                {proj.imageProvider === 'gemini' ? 'Get key from ai.google.dev' :
-                 proj.imageProvider === 'leonardo' ? 'Get key from leonardo.ai' :
-                 proj.imageProvider === 'grok' ? 'Get key from console.x.ai (experimental)' :
-                 proj.imageProvider === 'fal' ? 'Get key from fal.ai' :
-                 proj.imageProvider === 'seaart' ? 'Get key from seaart.ai/api' : ''}
-                </p>
+                {proj.imageProvider === 'gemini' ? (
+                    <a 
+                        href="https://aistudio.google.com/app/apikey" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from ai.google.dev
+                    </a>
+                ) : proj.imageProvider === 'leonardo' ? (
+                    <a 
+                        href="https://leonardo.ai/settings" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from leonardo.ai
+                    </a>
+                ) : proj.imageProvider === 'grok' ? (
+                    <a 
+                        href="https://console.x.ai" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from console.x.ai (experimental)
+                    </a>
+                ) : proj.imageProvider === 'fal' ? (
+                    <a 
+                        href="https://fal.ai/dashboard/keys" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from fal.ai
+                    </a>
+                ) : proj.imageProvider === 'seaart' ? (
+                    <a 
+                        href="https://seaart.ai/api" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from seaart.ai/api
+                    </a>
+                ) : null}
                 </div>
                 </div>
             )}
