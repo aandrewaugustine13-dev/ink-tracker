@@ -418,8 +418,8 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            if (line.match(/^\d+\s+Pages?\s*|/i)) {
-                const pageCountMatch = line.match(/^ (\d+)\s+Pages?/i);
+            if (line.match(/^\d+\s+Pages?\s*$/i)) {
+                const pageCountMatch = line.match(/^(\d+)\s+Pages?/i);
                 if (pageCountMatch && issueInfo) {
                     issueInfo.pageCount = parseInt(pageCountMatch[1], 10);
                 }
