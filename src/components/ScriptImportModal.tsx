@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { parseScript, ParseResult, VisualMarker } from '../services/scriptParser';
+import { parseScreenplay } from '../services/screenplayParser';
+import { parseStagePlay } from '../services/stagePlayParser';
+import { parseTVScript } from '../services/tvSeriesParser';
+import { ParseResult as SharedParseResult } from '../services/parserTypes';
 import { Project } from '../types';
 
 interface Props {
@@ -21,13 +25,95 @@ const MARKER_COLORS: Record<VisualMarker, string> = {
     'full-width': 'text-pink-500',
 };
 
+/**
+ * Convert shared ParseResult format to legacy format for backward compatibility
+ */
+function convertToLegacyResult(shared: SharedParseResult): ParseResult {
+    return {
+        success: shared.errors.length === 0 || shared.pages.length > 0,
+        pages: shared.pages.map(page => ({
+            pageNumber: page.pageNumber,
+            panels: page.panels.map(panel => ({
+                panelNumber: panel.panelNumber,
+                description: panel.description,
+                bubbles: panel.dialogue.map(d => ({
+                    type: d.type === 'spoken' ? 'dialogue' as const : 
+                          d.type === 'voiceover' ? 'dialogue' as const :
+                          d.type === 'thought' ? 'thought' as const :
+                          'caption' as const,
+                    text: d.text,
+                    character: d.character
+                })),
+                artistNotes: panel.artistNotes ? [panel.artistNotes] : [],
+                visualMarker: (panel.visualMarker as VisualMarker) || 'standard',
+                aspectRatio: 'wide' as any, // Default aspect ratio
+                panelModifier: panel.visualMarker
+            })),
+            pageNotes: undefined
+        })),
+        characters: shared.characters.map(c => ({
+            name: c.name,
+            lineCount: c.panelCount,
+            description: undefined,
+            firstAppearance: undefined
+        })),
+        errors: shared.errors.map(e => e.message),
+        warnings: []
+    };
+}
+
+/**
+ * Placeholder function for Google Drive import
+ * This will be wired up once Google API credentials are configured
+ */
+async function handleGoogleDriveImport(): Promise<{ content: string; filename: string } | null> {
+    // TODO: Implement Google Drive Picker API integration
+    // Required setup:
+    // 1. Create project in Google Cloud Console
+    // 2. Enable Google Drive API
+    // 3. Enable Google Picker API
+    // 4. Create OAuth 2.0 credentials
+    // 5. Add authorized JavaScript origins
+    // 6. Configure the picker with the API key and client ID
+    
+    console.log('Google Drive import not yet configured. Add Google API credentials to enable.');
+    
+    // For now, show an alert to the user
+    alert('Google Drive import is not yet configured.\n\nTo enable:\n1. Set up Google Cloud project\n2. Enable Drive & Picker APIs\n3. Configure OAuth credentials\n4. Add API keys to the application');
+    
+    return null;
+}
+
 export function ScriptImportModal({ project, onClose, onImport }: Props) {
     const [script, setScript] = useState('');
     const [result, setResult] = useState<ParseResult | null>(null);
     const [editableCharacters, setEditableCharacters] = useState<ParseResult['characters']>([]);
+    const [isLoadingDrive, setIsLoadingDrive] = useState(false);
 
     const handleParse = () => {
-        const parsed = parseScript(script);
+        const projectType = project.projectType || 'comic';
+        let parsed: ParseResult;
+        
+        // Select parser based on project type
+        switch (projectType) {
+            case 'screenplay':
+                const screenplayResult = parseScreenplay(script);
+                parsed = convertToLegacyResult(screenplayResult);
+                break;
+            case 'stage-play':
+                const stagePlayResult = parseStagePlay(script);
+                parsed = convertToLegacyResult(stagePlayResult);
+                break;
+            case 'tv-series':
+                const tvResult = parseTVScript(script);
+                parsed = convertToLegacyResult(tvResult);
+                break;
+            case 'comic':
+            default:
+                parsed = parseScript(script);
+                break;
+        }
+        
         setResult(parsed);
         setEditableCharacters(parsed.characters);
     };
@@ -60,6 +146,22 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
         }
     };
 
+    const handleGoogleDrive = async () => {
+        setIsLoadingDrive(true);
+        try {
+            const driveResult = await handleGoogleDriveImport();
+            if (driveResult) {
+                setScript(driveResult.content);
+                setResult(null);
+                setEditableCharacters([]);
+            }
+        } catch (error) {
+            console.error('Google Drive import error:', error);
+        } finally {
+            setIsLoadingDrive(false);
+        }
+    };
+
     const getPageLabel = () => {
         const type = project.projectType;
         if (type === 'screenplay' || type === 'tv-series') return 'Scenes';
@@ -89,6 +191,17 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
         }
     };
 
+    const getProjectTypeLabel = () => {
+        const type = project.projectType;
+        switch (type) {
+            case 'screenplay': return 'Screenplay';
+            case 'stage-play': return 'Stage Play';
+            case 'tv-series': return 'TV Series';
+            case 'comic':
+            default: return 'Comic / Graphic Novel';
+        }
+    };
+
     const totalPanels = result?.pages.reduce((sum, p) => sum + p.panels.length, 0) || 0;
     const markerCounts = result?.pages.reduce((acc, p) => {
         p.panels.forEach(pan => {
@@ -105,20 +218,44 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                 <div className="p-6 border-b border-ink-700 flex items-center justify-between">
                     <div>
                         <h2 className="font-display text-3xl tracking-widest text-ember-500 uppercase">Script Import</h2>
-                        <p className="text-[10px] font-mono text-steel-500 mt-1 uppercase tracking-widest">Paste script or upload .txt file</p>
+                        <p className="text-[10px] font-mono text-steel-500 mt-1 uppercase tracking-widest">
+                            {getProjectTypeLabel()} • Paste script or upload .txt file
+                        </p>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-ink-800 hover:bg-red-500 text-steel-400 hover:text-white transition-all text-xl font-bold">×</button>
                 </div>
 
                 <div className="flex-1 flex overflow-hidden">
                     <div className="flex-1 flex flex-col p-6 border-r border-ink-700">
-                        <div className="mb-4">
+                        <div className="mb-4 flex items-center gap-3">
                             <input
                                 type="file"
                                 accept=".txt,.md"
                                 onChange={handleFile}
                                 className="text-[10px] text-steel-400 file:mr-3 file:py-2 file:px-4 file:border file:border-ink-700 file:bg-ink-800 file:text-ember-500 file:font-bold file:text-[9px] file:uppercase file:cursor-pointer file:rounded-lg hover:file:bg-ink-700"
                             />
+                            <button
+                                onClick={handleGoogleDrive}
+                                disabled={isLoadingDrive}
+                                className="py-2 px-4 border border-ink-700 bg-ink-800 text-steel-400 font-bold text-[9px] uppercase rounded-lg hover:bg-ink-700 hover:text-white transition-all disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isLoadingDrive ? (
+                                    <>
+                                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        Loading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M7.71 3.5L1.15 15l2.44 4.21L16.03 19l6.56-11.5-2.44-4.21L7.71 3.5zm.79 2l8.92.01 4.57 8-8.92-.01-4.57-8zM5.57 8.5l4.57 8-2.15-.01-4.57-8 2.15.01z" />
+                                        </svg>
+                                        Google Drive
+                                    </>
+                                )}
+                            </button>
                         </div>
                         <textarea
                             value={script}
@@ -165,6 +302,51 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                                                 <p className="text-[9px] font-mono text-steel-500 uppercase">Characters</p>
                                             </div>
                                         </div>
+
+                                        {/* Visual Markers / Shot Types */}
+                                        {Object.keys(markerCounts).length > 0 && (
+                                            <div className="bg-ink-800/50 rounded-lg p-3">
+                                                <p className="text-[9px] font-mono text-steel-500 uppercase mb-2">
+                                                    {project.projectType === 'screenplay' || project.projectType === 'tv-series' ? 'Shot Types' : 'Visual Markers'}
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {Object.entries(markerCounts).map(([marker, count]) => (
+                                                        <span
+                                                            key={marker}
+                                                            className={`text-[10px] px-2 py-1 rounded-full bg-ink-900 ${MARKER_COLORS[marker as VisualMarker] || 'text-steel-400'}`}
+                                                        >
+                                                            {marker}: {count}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Cast Detected - Editable with X buttons */}
+                                        {editableCharacters.length > 0 && (
+                                            <div className="bg-ink-800/50 rounded-lg p-3">
+                                                <p className="text-[9px] font-mono text-steel-500 uppercase mb-2">Cast Detected</p>
+                                                <p className="text-[8px] font-mono text-steel-600 mb-2 italic">Click × to remove incorrectly detected names</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {editableCharacters.map((char) => (
+                                                        <span
+                                                            key={char.name}
+                                                            className="text-[10px] px-2 py-1 rounded-full bg-ink-900 text-steel-300 flex items-center gap-1.5 group hover:bg-ink-700 transition-colors"
+                                                        >
+                                                            {char.name}
+                                                            <span className="text-steel-600 text-[9px]">({char.lineCount})</span>
+                                                            <button
+                                                                onClick={() => handleRemoveCharacter(char.name)}
+                                                                className="w-4 h-4 flex items-center justify-center rounded-full bg-ink-700 hover:bg-red-500 text-steel-500 hover:text-white transition-all text-[10px] font-bold ml-1 opacity-60 group-hover:opacity-100"
+                                                                title={`Remove ${char.name} from cast`}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <button
                                             onClick={handleImport}
