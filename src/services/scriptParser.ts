@@ -327,12 +327,18 @@ export function parseScript(scriptText: string): ParseResult {
     const characterMap = new Map<string, { count: number; first: string; description?: string }>();
     let issueInfo: ParsedIssue | undefined;
 
+    // Debug logging
+    console.log('[parseScript] Called with text length:', scriptText.length);
+    console.log('[parseScript] First 300 chars:', JSON.stringify(scriptText.substring(0, 300)));
+
     try {
         const normalizedText = scriptText
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n');
 
         const allLines = normalizedText.split('\n');
+        console.log('[parseScript] Line count:', allLines.length);
+        console.log('[parseScript] First 5 lines:', allLines.slice(0, 5));
 
         let currentPageNumber = 0;
         let currentPagePanels: ParsedPanel[] = [];
@@ -468,6 +474,7 @@ export function parseScript(scriptText: string): ParseResult {
                 if (pageMatch) break;
             }
             if (pageMatch) {
+                console.log(`[parseScript] PAGE found at line ${i}: "${line}" -> page ${pageMatch[1]}`);
                 saveCurrentPage();
                 currentPageNumber = parsePageNumber(pageMatch[1]);
                 inCastSection = false;
@@ -485,6 +492,7 @@ export function parseScript(scriptText: string): ParseResult {
             }
 
             if (panelMatch) {
+                console.log(`[parseScript] PANEL found at line ${i}: "${line}" -> panel ${panelMatch[1]}`);
                 saveCurrentPanel();
                 currentPanelNumber = parseInt(panelMatch[1], 10);
                 currentPanelModifier = (panelMatch[2] || panelMatch[3] || '').trim();
@@ -589,7 +597,11 @@ export function parseScript(scriptText: string): ParseResult {
 
         saveCurrentPage();
 
+        console.log('[parseScript] After parsing - pages count:', pages.length);
+        console.log('[parseScript] Pages summary:', pages.map(p => ({ pageNum: p.pageNumber, panelCount: p.panels.length })));
+
         if (pages.length === 0) {
+            console.log('[parseScript] FAILED - No pages found');
             errors.push('No story structure detected. Ensure pages start with "PAGE 1" or "### PAGE ONE" and panels with "Panel 1" or "**Panel 1**".');
             return { success: false, pages: [], characters: [], errors, warnings };
         }

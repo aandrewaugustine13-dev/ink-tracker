@@ -32,6 +32,12 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
     const handleParse = () => {
         let parsed: ParseResult;
         
+        // Debug logging to trace parser issues
+        console.log('[ScriptImportModal] handleParse called');
+        console.log('[ScriptImportModal] project.projectType:', project.projectType);
+        console.log('[ScriptImportModal] script length:', script.length);
+        console.log('[ScriptImportModal] script first 200 chars:', JSON.stringify(script.substring(0, 200)));
+        
         // Select the appropriate parser based on project type
         switch (project.projectType) {
             case 'screenplay':
@@ -137,7 +143,13 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
             case 'comic':
             default:
                 // Use the existing comic parser
+                console.log('[ScriptImportModal] Using COMIC parser (default)');
                 parsed = parseScript(script);
+                console.log('[ScriptImportModal] Comic parser result:', {
+                    success: parsed.success,
+                    pagesCount: parsed.pages.length,
+                    errors: parsed.errors
+                });
                 break;
         }
         
