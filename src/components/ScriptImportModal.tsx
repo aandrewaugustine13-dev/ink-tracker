@@ -34,14 +34,19 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
         
         // Debug logging to trace parser issues
         console.log('[ScriptImportModal] handleParse called');
-        console.log('[ScriptImportModal] project.projectType:', project.projectType);
+        console.log('[ScriptImportModal] project:', project);
+        console.log('[ScriptImportModal] project.projectType:', project?.projectType);
         console.log('[ScriptImportModal] script length:', script.length);
         console.log('[ScriptImportModal] script first 200 chars:', JSON.stringify(script.substring(0, 200)));
         
+        // Determine which parser to use
+        const projectType = project?.projectType;
+        console.log('[ScriptImportModal] Resolved projectType:', projectType);
+        
         // Select the appropriate parser based on project type
-        switch (project.projectType) {
+        switch (projectType) {
             case 'screenplay':
-                // parseScreenplay returns a different format, we need to adapt it
+                console.log('[ScriptImportModal] Using SCREENPLAY parser');
                 const screenplayResult = parseScreenplay(script);
                 parsed = {
                     success: screenplayResult.errors.length === 0 || screenplayResult.pages.length > 0,
@@ -75,6 +80,7 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                 break;
                 
             case 'stage-play':
+                console.log('[ScriptImportModal] Using STAGE-PLAY parser');
                 const stageResult = parseStagePlay(script);
                 parsed = {
                     success: stageResult.errors.length === 0 || stageResult.pages.length > 0,
@@ -108,6 +114,7 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                 break;
                 
             case 'tv-series':
+                console.log('[ScriptImportModal] Using TV-SERIES parser');
                 const tvResult = parseTVScript(script);
                 parsed = {
                     success: tvResult.errors.length === 0 || tvResult.pages.length > 0,
