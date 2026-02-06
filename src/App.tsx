@@ -1124,6 +1124,11 @@ function AppContent() {
             onSyncPrompt={(panelId, newPrompt) => {
               dispatch({ type: 'UPDATE_PANEL', panelId, updates: { prompt: newPrompt } });
             }}
+            onReparseApply={(updatedPages) => {
+              // Apply the reparsed pages to the issue
+              // This would need a new action type to handle bulk page updates
+              console.log('Reparse apply:', updatedPages);
+            }}
           >
             <TransformComponent 
             wrapperClass="w-full h-full" 

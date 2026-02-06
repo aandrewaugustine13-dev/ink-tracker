@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Panel, Separator, Group } from 'react-resizable-panels';
-import { Issue, Panel as StoryPanel } from '../types';
+import { RefreshCw } from 'lucide-react';
+import { Issue, Panel as StoryPanel, Page } from '../types';
 import { VisualMarker } from '../services/scriptParser';
+import { ScriptReparseModal } from './ScriptReparseModal';
 
 interface Props {
     issue: Issue;
@@ -9,6 +11,7 @@ interface Props {
     onPanelClick: (panelId: string) => void;
     onScriptSectionClick: (panelId: string) => void;
     onSyncPrompt: (panelId: string, newPrompt: string) => void;
+    onReparseApply: (updatedPages: Page[]) => void;
     children: React.ReactNode; // The right pane content (panel canvas)
 }
 
@@ -25,9 +28,10 @@ const MARKER_COLORS: Record<VisualMarker, string> = {
     'full-width': 'bg-pink-500/10 border-l-4 border-pink-500',
 };
 
-export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionClick, onSyncPrompt, children }: Props) {
+export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionClick, onSyncPrompt, onReparseApply, children }: Props) {
     const [highlightedScriptSection, setHighlightedScriptSection] = useState<{ start: number; end: number } | null>(null);
     const [editedSections, setEditedSections] = useState<Map<string, string>>(new Map());
+    const [showReparseModal, setShowReparseModal] = useState(false);
     const scriptRef = useRef<HTMLDivElement>(null);
 
     // Find the panel with scriptRef for the given activePanelId
@@ -173,14 +177,25 @@ export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionC
     }
 
     return (
+        <>
         <Group orientation="horizontal" className="h-full">
             <Panel defaultSize={40} minSize={20} className="bg-ink-950">
                 <div className="h-full flex flex-col">
-                    <div className="p-4 border-b border-ink-700">
-                        <h2 className="font-display text-xl tracking-widest text-ember-500 uppercase">Script</h2>
-                        <p className="text-[10px] font-mono text-steel-500 mt-1 uppercase tracking-widest">
-                            Click sections to navigate panels
-                        </p>
+                    <div className="p-4 border-b border-ink-700 flex items-center justify-between">
+                        <div>
+                            <h2 className="font-display text-xl tracking-widest text-ember-500 uppercase">Script</h2>
+                            <p className="text-[10px] font-mono text-steel-500 mt-1 uppercase tracking-widest">
+                                Click sections to navigate panels
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowReparseModal(true)}
+                            className="px-3 py-2 bg-ink-800 hover:bg-ember-500 text-steel-400 hover:text-ink-950 rounded-lg transition-all flex items-center gap-2 text-xs font-bold uppercase"
+                            title="Re-parse script"
+                        >
+                            <RefreshCw size={14} />
+                            Re-parse
+                        </button>
                     </div>
                     <div
                         ref={scriptRef}
@@ -199,5 +214,17 @@ export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionC
                 </div>
             </Panel>
         </Group>
+        
+        {showReparseModal && (
+            <ScriptReparseModal
+                issue={issue}
+                onClose={() => setShowReparseModal(false)}
+                onApplyChanges={(updatedPages) => {
+                    onReparseApply(updatedPages);
+                    setShowReparseModal(false);
+                }}
+            />
+        )}
+        </>
     );
 }
