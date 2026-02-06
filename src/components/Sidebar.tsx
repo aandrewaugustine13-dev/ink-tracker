@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppState } from '../types';
+import { AppState, Panel } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
 import { generateImage as generateGeminiImage } from '../services/geminiService';
@@ -7,7 +7,7 @@ import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 import { generateSeaArtImage } from '../services/seaartService';
-import { saveImage } from '../services/imageStorage';
+import { saveImage, getImage } from '../services/imageStorage';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../services/supabase';
 
@@ -17,6 +17,91 @@ interface SidebarProps {
     onOpenProjects: () => void;
     onOpenScriptImport: () => void;
 }
+
+// Component to display a single panel thumbnail
+const PanelThumbnail: React.FC<{ panel: Panel }> = ({ panel }) => {
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadImage = async () => {
+            if (!panel.imageUrl) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // Check if the imageUrl is an idb:// URL
+                if (panel.imageUrl.startsWith('idb://')) {
+                    const panelId = panel.imageUrl.replace('idb://', '');
+                    const image = await getImage(panelId);
+                    if (mounted && image) {
+                        setImageSrc(image);
+                    }
+                } else {
+                    // Direct URL
+                    if (mounted) {
+                        setImageSrc(panel.imageUrl);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading thumbnail:', error);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadImage();
+
+        return () => {
+            mounted = false;
+        };
+    }, [panel.imageUrl, panel.id]);
+
+    if (loading) {
+        return (
+            <div className="w-5 h-5 bg-ink-800 border border-ink-700 rounded flex-shrink-0 animate-pulse" />
+        );
+    }
+
+    if (!imageSrc) {
+        return (
+            <div className="w-5 h-5 bg-ink-800 border border-ink-700 rounded flex-shrink-0" />
+        );
+    }
+
+    return (
+        <img
+            src={imageSrc}
+            alt=""
+            className="w-5 h-5 rounded border border-ink-700 object-cover flex-shrink-0"
+        />
+    );
+};
+
+// Component to display thumbnails for all panels on a page
+const PageThumbnails: React.FC<{ panels: Panel[] }> = ({ panels }) => {
+    const maxVisible = 6;
+    const visiblePanels = panels.slice(0, maxVisible);
+    const remainingCount = panels.length - maxVisible;
+
+    return (
+        <div className="flex items-center gap-1 mt-1">
+            {visiblePanels.map((panel) => (
+                <PanelThumbnail key={panel.id} panel={panel} />
+            ))}
+            {remainingCount > 0 && (
+                <span className="text-[9px] text-steel-600 font-mono ml-1">
+                    +{remainingCount}
+                </span>
+            )}
+        </div>
+    );
+};
 
 const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOpenScriptImport }) => {
     const { user, signInWithGoogle } = useAuth();
@@ -579,12 +664,17 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                                 <button
                                                     key={pg.id}
                                                     onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
-                                                    className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
+                                                    className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all ${
                                                         state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
                                                     }`}
                                                 >
-                                                    <span>PAGE {pg.number}</span>
-                                                    <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>PAGE {pg.number}</span>
+                                                        <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
+                                                    </div>
+                                                    {pg.panels.length > 0 && (
+                                                        <PageThumbnails panels={pg.panels} />
+                                                    )}
                                                 </button>
                                             ))}
                                             <button
