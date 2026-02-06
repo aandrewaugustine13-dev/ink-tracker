@@ -103,6 +103,9 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
   };
 };
 
+// Delay between batch image generations to avoid rate limiting
+const BATCH_GENERATION_DELAY_MS = 1200;
+
 function AppContent() {
   const { user, signOut, loading } = useAuth();
   const [stateWithHistory, dispatchWithHistory] = useReducer(
@@ -578,7 +581,7 @@ function AppContent() {
   };
 
   // Generate All functionality
-  const imageGeneration = activeProject ? useImageGeneration(activeProject) : null;
+  const imageGeneration = useImageGeneration(activeProject);
   
   // Check if Generate All button should be visible
   const shouldShowGenerateAll = useMemo(() => {
@@ -597,7 +600,7 @@ function AppContent() {
   }, [activePage]);
 
   const handleGenerateAll = async () => {
-    if (!activePage || !activeProject || !imageGeneration) return;
+    if (!activePage || !activeProject) return;
     
     setIsGeneratingAll(true);
     setCancelGenerateAll(false);
@@ -650,8 +653,8 @@ function AppContent() {
             });
           }
 
-          // Small delay between generations
-          await new Promise(r => setTimeout(r, 1200));
+          // Delay between generations to avoid rate limiting
+          await new Promise(r => setTimeout(r, BATCH_GENERATION_DELAY_MS));
         } catch (err: any) {
           console.error(`Failed to generate panel ${i + 1}:`, err);
           // Continue to next panel on error
@@ -841,7 +844,7 @@ function AppContent() {
             </button>
           )}
         </div>
-        <div className={`text-[9px] font-mono ${showGutters ? 'text-steel-600' : 'text-steel-600'}`}>
+        <div className="text-[9px] font-mono text-steel-600">
           Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
         </div>
       </div>

@@ -1,7 +1,6 @@
 // src/hooks/useImageGeneration.ts
 import { Project, AspectRatio, Character } from '../types';
 import { ART_STYLES, ASPECT_CONFIGS } from '../constants';
-import { getImage, saveImage } from '../services/imageStorage';
 import { generateImage as generateGeminiImage } from '../services/geminiService';
 import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
@@ -51,7 +50,7 @@ function buildCharacterPrompt(char: Character): string {
 /**
  * Hook for generating images with various providers
  */
-export const useImageGeneration = (project: Project) => {
+export const useImageGeneration = (project: Project | undefined) => {
     /**
      * Generate an image using the project's configured provider
      * @param prompt - The text prompt for image generation
@@ -68,6 +67,10 @@ export const useImageGeneration = (project: Project) => {
         initImage?: string,
         referenceStrength: number = 0.7
     ): Promise<string | undefined> => {
+        if (!project) {
+            throw new Error('No active project');
+        }
+        
         // Build full prompt with style and characters
         const styleConfig = ART_STYLES.find(s => s.id === project.style);
         const stylePrompt = project.style === 'custom' 
