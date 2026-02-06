@@ -16,7 +16,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users, Sparkles, Loader2 } from 'lucide-react';
 
 import {
   Page,
@@ -43,6 +43,7 @@ import UserGuide from './components/UserGuide';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
+import { useImageGeneration } from './hooks/useImageGeneration';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -158,6 +159,12 @@ function AppContent() {
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
   const [showCharacterBank, setShowCharacterBank] = useState(false);
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
+  
+  // Generate All state
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [currentPanel, setCurrentPanel] = useState(0);
+  const [totalPanels, setTotalPanels] = useState(0);
+  const [cancelGeneration, setCancelGeneration] = useState(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
@@ -571,6 +578,97 @@ function AppContent() {
     } finally { setBatching(false); }
   };
 
+  const handleGenerateAll = async () => {
+    if (!activePage || !activeProject) return;
+    
+    // Get panels that need generation (have prompt, no image)
+    const panelsToGenerate = activePage.panels.filter(
+      panel => (panel.prompt?.trim() || panel.characterIds.length > 0) && !panel.imageUrl
+    );
+    
+    if (panelsToGenerate.length === 0) {
+      alert('No panels to generate. All panels either have images or lack prompts.');
+      return;
+    }
+    
+    setIsGeneratingAll(true);
+    setTotalPanels(panelsToGenerate.length);
+    setCancelGeneration(false);
+    
+    for (let i = 0; i < panelsToGenerate.length; i++) {
+      if (cancelGeneration) {
+        console.log('Generation cancelled by user');
+        break;
+      }
+      
+      setCurrentPanel(i + 1);
+      const panel = panelsToGenerate[i];
+      
+      try {
+        // Build prompt using existing logic from generatePage function
+        const styleConfig = ART_STYLES.find(s => s.id === activeProject.style);
+        const stylePrompt = activeProject.style === 'custom' 
+          ? (activeProject.customStylePrompt || '') 
+          : (styleConfig?.prompt || '');
+        
+        const activeChars = activeProject.characters.filter(c => panel.characterIds.includes(c.id));
+        const charSection = activeChars.length > 0 
+          ? `Characters: ${activeChars.map(c => buildCharacterPrompt(c)).join('; ')}.` 
+          : '';
+        
+        const config = ASPECT_CONFIGS[panel.aspectRatio];
+        
+        // Get reference image if set
+        let initImage: string | undefined;
+        if (panel.referencePanelId) {
+          const refPanel = activePage.panels.find(p => p.id === panel.referencePanelId);
+          if (refPanel?.imageUrl) {
+            const id = refPanel.imageUrl.startsWith('idb://') ? refPanel.imageUrl.slice(6) : null;
+            if (id) initImage = await getImage(id) || undefined;
+          }
+        }
+        
+        const consistencySuffix = initImage 
+          ? " Maintain strong visual and character consistency with the reference image. Same lighting, angle, style."
+          : '';
+        const fullPrompt = `${stylePrompt}. ${charSection} ${panel.prompt || ''}.${consistencySuffix}`.trim();
+        
+        // Call the appropriate service based on provider
+        let url: string | undefined;
+        if (activeProject.imageProvider === 'gemini' && activeProject.geminiApiKey) {
+          url = await generateGeminiImage(fullPrompt, config.ratio, activeProject.geminiApiKey, initImage, panel.referenceStrength ?? 0.7);
+        } else if (activeProject.imageProvider === 'leonardo' && activeProject.leonardoApiKey) {
+          url = await generateLeonardoImage(fullPrompt, panel.aspectRatio, activeProject.leonardoApiKey, initImage, panel.referenceStrength ?? 0.7);
+        } else if (activeProject.imageProvider === 'grok' && activeProject.grokApiKey) {
+          url = await generateGrokImage(fullPrompt, panel.aspectRatio, activeProject.grokApiKey, initImage, panel.referenceStrength ?? 0.7);
+        } else if (activeProject.imageProvider === 'fal' && activeProject.falApiKey) {
+          url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
+        } else if (activeProject.imageProvider === 'seaart' && activeProject.seaartApiKey) {
+          url = await generateSeaArtImage(fullPrompt, panel.aspectRatio, activeProject.seaartApiKey, initImage, panel.referenceStrength ?? 0.7);
+        } else {
+          console.warn(`No API key configured for provider: ${activeProject.imageProvider}`);
+        }
+        
+        if (url) {
+          const storedRef = await saveImage(panel.id, url);
+          dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { imageUrl: storedRef } });
+        }
+        
+        // Delay between generations (same as AUTO-INK)
+        await new Promise(r => setTimeout(r, 1200));
+        
+      } catch (err) {
+        console.error(`Failed to generate panel ${i + 1}:`, err);
+        // Continue to next panel instead of stopping
+      }
+    }
+    
+    setIsGeneratingAll(false);
+    setCurrentPanel(0);
+    setTotalPanels(0);
+  };
+
+
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
     <Sidebar
@@ -720,6 +818,32 @@ function AppContent() {
     <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
     {batching ? <Icons.Loader /> : <Icons.Magic />}AUTO-INK
     </button>
+    {/* Generate All Button */}
+    {activePage && activePage.panels.some(panel => (panel.prompt?.trim() || panel.characterIds.length > 0) && !panel.imageUrl) && (
+      <div className="flex flex-col items-center gap-1">
+        <button
+          onClick={handleGenerateAll}
+          disabled={isGeneratingAll || batching}
+          className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        >
+          {isGeneratingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          {isGeneratingAll ? `GENERATING ${currentPanel}/${totalPanels}...` : 'GENERATE ALL'}
+        </button>
+        {!isGeneratingAll && (
+          <p className="text-[9px] font-mono text-steel-600 mt-1 max-w-[200px] text-center">
+            Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
+          </p>
+        )}
+        {isGeneratingAll && (
+          <button
+            onClick={() => setCancelGeneration(true)}
+            className="text-xs font-mono text-red-500 hover:text-red-400"
+          >
+            CANCEL
+          </button>
+        )}
+      </div>
+    )}
     {/* Page Templates */}
     <div className="relative">
       <button
