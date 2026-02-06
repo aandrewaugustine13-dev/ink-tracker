@@ -43,7 +43,6 @@ import UserGuide from './components/UserGuide';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
-import { useImageGeneration } from './hooks/useImageGeneration';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
