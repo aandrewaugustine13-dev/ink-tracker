@@ -23,7 +23,8 @@ import {
   Issue,
   Character,
   AspectRatio,
-  Project
+  Project,
+  Panel
 } from './types';
 import { historyReducer, createInitialHistoryState, canUndo, canRedo } from './state/reducer';
 import { createInitialState, normalizeProjects } from './state/initialState';
@@ -189,6 +190,16 @@ function AppContent() {
   const [currentPanel, setCurrentPanel] = useState(0);
   const [totalPanels, setTotalPanels] = useState(0);
   const cancelGenerationRef = useRef(false);
+
+  // Batch Restyle state
+  const [isRestylingBatch, setIsRestylingBatch] = useState(false);
+  const [restyleScope, setRestyleScope] = useState<'page' | 'issue' | null>(null);
+  const [restyleCurrentPanel, setRestyleCurrentPanel] = useState(0);
+  const [restyleTotalPanels, setRestyleTotalPanels] = useState(0);
+  const [restyleResults, setRestyleResults] = useState<Array<{panelId: string; success: boolean; prompt: string; imageUrl?: string}>>([]);
+  const [showRestyleConfirm, setShowRestyleConfirm] = useState(false);
+  const [restylePanelCount, setRestylePanelCount] = useState(0);
+  const cancelRestyleRef = useRef(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
@@ -673,6 +684,146 @@ function AppContent() {
     setTotalPanels(0);
   };
 
+  // Start restyle confirmation
+  const handleStartRestylePage = () => {
+    if (!activePage || !activeProject) return;
+    const panelsWithImages = activePage.panels.filter(p => p.imageUrl);
+    if (panelsWithImages.length === 0) {
+      alert('No panels with images to restyle on this page.');
+      return;
+    }
+    setRestylePanelCount(panelsWithImages.length);
+    setRestyleScope('page');
+    setShowRestyleConfirm(true);
+  };
+
+  const handleStartRestyleIssue = () => {
+    if (!activeIssue || !activeProject) return;
+    const allPanels = activeIssue.pages.flatMap(page => page.panels);
+    const panelsWithImages = allPanels.filter(p => p.imageUrl);
+    if (panelsWithImages.length === 0) {
+      alert('No panels with images to restyle in this issue.');
+      return;
+    }
+    setRestylePanelCount(panelsWithImages.length);
+    setRestyleScope('issue');
+    setShowRestyleConfirm(true);
+  };
+
+  // Execute restyle
+  const handleConfirmRestyle = async () => {
+    if (!activeProject || !imageGeneration) return;
+    
+    setShowRestyleConfirm(false);
+    setIsRestylingBatch(true);
+    cancelRestyleRef.current = false;
+    setRestyleResults([]);
+    
+    // Get the art style name
+    const styleConfig = ART_STYLES.find(s => s.id === activeProject.style);
+    const styleName = activeProject.style === 'custom' 
+      ? 'Custom Style' 
+      : (styleConfig?.name || activeProject.style);
+    
+    let panelsToRestyle: Array<{panel: Panel; pageId: string}> = [];
+    
+    if (restyleScope === 'page' && activePage) {
+      panelsToRestyle = activePage.panels
+        .filter(p => p.imageUrl)
+        .map(p => ({ panel: p, pageId: activePage.id }));
+    } else if (restyleScope === 'issue' && activeIssue) {
+      for (const page of activeIssue.pages) {
+        for (const panel of page.panels) {
+          if (panel.imageUrl) {
+            panelsToRestyle.push({ panel, pageId: page.id });
+          }
+        }
+      }
+    }
+    
+    setRestyleTotalPanels(panelsToRestyle.length);
+    
+    for (let i = 0; i < panelsToRestyle.length; i++) {
+      if (cancelRestyleRef.current) {
+        console.log('Restyle cancelled by user');
+        break;
+      }
+      
+      setRestyleCurrentPanel(i + 1);
+      const { panel, pageId } = panelsToRestyle[i];
+      
+      try {
+        // Get active characters for this panel
+        const activeChars = activeProject.characters.filter(c => panel.characterIds.includes(c.id));
+        
+        // Get reference image if set
+        let initImage: string | undefined;
+        if (panel.referencePanelId) {
+          const page = activeIssue?.pages.find(p => p.panels.some(pan => pan.id === panel.referencePanelId));
+          const refPanel = page?.panels.find(p => p.id === panel.referencePanelId);
+          if (refPanel?.imageUrl) {
+            const id = refPanel.imageUrl.startsWith('idb://') ? refPanel.imageUrl.slice(6) : null;
+            if (id) initImage = await getImage(id) || undefined;
+          }
+        }
+        
+        // Use the shared hook to generate with current style
+        const url = await imageGeneration.generateImage(
+          panel.prompt || '',
+          panel.aspectRatio,
+          activeChars,
+          initImage,
+          panel.referenceStrength ?? 0.7
+        );
+        
+        if (url) {
+          // Save to IndexedDB
+          const storedRef = await saveImage(panel.id, url);
+          
+          // Update panel with new image
+          dispatch({ 
+            type: 'UPDATE_PANEL', 
+            panelId: panel.id, 
+            updates: { imageUrl: storedRef } 
+          });
+          
+          setRestyleResults(prev => [...prev, {
+            panelId: panel.id,
+            success: true,
+            prompt: panel.prompt || '',
+            imageUrl: url
+          }]);
+        }
+        
+        // Delay between requests
+        if (i < panelsToRestyle.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, GENERATION_DELAY_MS));
+        }
+      } catch (error: any) {
+        console.error(`Failed to restyle panel ${panel.id}:`, error);
+        setRestyleResults(prev => [...prev, {
+          panelId: panel.id,
+          success: false,
+          prompt: panel.prompt || ''
+        }]);
+      }
+    }
+    
+    setIsRestylingBatch(false);
+  };
+
+  const handleCancelRestyle = () => {
+    cancelRestyleRef.current = true;
+    setIsRestylingBatch(false);
+  };
+
+  const handleCloseRestyleResults = () => {
+    setIsRestylingBatch(false);
+    setRestyleResults([]);
+    setRestyleCurrentPanel(0);
+    setRestyleTotalPanels(0);
+  };
+
   // Page navigation handlers for spread view
   const handlePreviousPage = () => {
     if (!activeIssue || !activePage) return;
@@ -887,6 +1038,34 @@ function AppContent() {
         )}
       </div>
     )}
+    {/* Restyle Buttons */}
+    <button
+      onClick={handleStartRestylePage}
+      disabled={!activePage || activePage.panels.filter(p => p.imageUrl).length === 0 || isRestylingBatch || isGeneratingAll}
+      className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+        showGutters 
+          ? 'bg-white border-black text-black hover:bg-gray-100' 
+          : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'
+      }`}
+      title="Regenerate all panel images on current page with current art style"
+    >
+      <RefreshCw size={16} />
+      RESTYLE PAGE
+    </button>
+
+    <button
+      onClick={handleStartRestyleIssue}
+      disabled={!activeIssue || activeIssue.pages.flatMap(p => p.panels).filter(p => p.imageUrl).length === 0 || isRestylingBatch || isGeneratingAll}
+      className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+        showGutters 
+          ? 'bg-white border-black text-black hover:bg-gray-100' 
+          : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'
+      }`}
+      title="Regenerate all panel images in entire issue with current art style"
+    >
+      <RefreshCw size={16} />
+      RESTYLE ISSUE
+    </button>
     {/* Page Templates */}
     <div className="relative">
       <button
@@ -1097,6 +1276,207 @@ function AppContent() {
         dispatch={dispatch} 
         onClose={() => setShowCharacterBank(false)} 
       />
+    )}
+    
+    {/* Restyle Confirmation Modal */}
+    {showRestyleConfirm && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 animate-fade-in">
+        <div className={`rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 ${
+          showGutters ? 'bg-white' : 'bg-ink-900 border border-ink-700'
+        }`}>
+          <h2 className={`font-display text-2xl uppercase tracking-wider mb-4 ${
+            showGutters ? 'text-black' : 'text-steel-100'
+          }`}>
+            Confirm Batch Restyle
+          </h2>
+          
+          <div className={`mb-6 ${showGutters ? 'text-gray-700' : 'text-steel-300'}`}>
+            <p className="mb-3">
+              This will regenerate <strong className="text-ember-500">{restylePanelCount} panel{restylePanelCount !== 1 ? 's' : ''}</strong> in the current art style{' '}
+              <strong className="text-ember-500">
+                ({activeProject?.style === 'custom' 
+                  ? 'Custom Style' 
+                  : ART_STYLES.find(s => s.id === activeProject?.style)?.name || activeProject?.style})
+              </strong>.
+            </p>
+            <p className="mb-3">
+              This may take several minutes and will <strong>replace existing images</strong>.
+            </p>
+            <p className="text-sm">
+              Only panels that already have images will be regenerated. Panels without images will be skipped.
+            </p>
+          </div>
+          
+          {/* API Credit Warning */}
+          <div className={`mb-6 p-3 rounded-lg border ${
+            showGutters 
+              ? 'bg-amber-50 border-amber-300' 
+              : 'bg-amber-900/20 border-amber-700/50'
+          }`}>
+            <p className={`text-[9px] font-mono ${
+              showGutters ? 'text-amber-800' : 'text-amber-400'
+            }`}>
+              ⚠️ Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
+            </p>
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowRestyleConfirm(false)}
+              className={`flex-1 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors ${
+                showGutters 
+                  ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                  : 'bg-ink-800 hover:bg-ink-700 text-steel-300'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmRestyle}
+              className="flex-1 px-4 py-2 rounded-lg bg-ember-500 hover:bg-ember-400 text-white font-mono text-xs uppercase tracking-wider transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Restyle Progress Modal */}
+    {isRestylingBatch && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 animate-fade-in">
+        <div className={`rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto ${
+          showGutters ? 'bg-white' : 'bg-ink-900 border border-ink-700'
+        }`}>
+          <h2 className={`font-display text-2xl uppercase tracking-wider mb-4 ${
+            showGutters ? 'text-black' : 'text-steel-100'
+          }`}>
+            Restyling {restyleScope === 'page' ? 'Page' : 'Issue'}
+          </h2>
+          
+          {/* Progress Bar */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className={`font-mono text-sm ${showGutters ? 'text-gray-700' : 'text-steel-300'}`}>
+                Panel {restyleCurrentPanel} of {restyleTotalPanels}
+              </span>
+              <span className={`font-mono text-sm ${showGutters ? 'text-gray-700' : 'text-steel-300'}`}>
+                {Math.round((restyleCurrentPanel / restyleTotalPanels) * 100)}%
+              </span>
+            </div>
+            <div className={`h-2 rounded-full overflow-hidden ${showGutters ? 'bg-gray-200' : 'bg-ink-800'}`}>
+              <div 
+                className="h-full bg-ember-500 transition-all duration-300"
+                style={{ width: `${(restyleCurrentPanel / restyleTotalPanels) * 100}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Current Panel Info */}
+          {restyleResults.length > 0 && restyleResults[restyleResults.length - 1] && (
+            <div className="mb-6">
+              <p className={`font-mono text-xs uppercase tracking-wider mb-2 ${
+                showGutters ? 'text-gray-500' : 'text-steel-500'
+              }`}>
+                Current Panel:
+              </p>
+              <div className={`p-3 rounded-lg ${
+                showGutters ? 'bg-gray-50' : 'bg-ink-950/50'
+              }`}>
+                <p className={`text-sm mb-2 ${showGutters ? 'text-gray-700' : 'text-steel-300'}`}>
+                  {restyleResults[restyleResults.length - 1].prompt || 'No prompt'}
+                </p>
+                {restyleResults[restyleResults.length - 1].imageUrl && (
+                  <img 
+                    src={restyleResults[restyleResults.length - 1].imageUrl} 
+                    alt="Generated" 
+                    className="w-full max-h-40 object-contain rounded"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Results Summary */}
+          <div className="mb-6">
+            <p className={`font-mono text-xs uppercase tracking-wider mb-2 ${
+              showGutters ? 'text-gray-500' : 'text-steel-500'
+            }`}>
+              Results:
+            </p>
+            <div className="flex gap-4">
+              <div className={`flex items-center gap-2 ${showGutters ? 'text-green-700' : 'text-green-400'}`}>
+                <span className="font-mono text-sm">✓ Success:</span>
+                <span className="font-mono text-sm font-bold">
+                  {restyleResults.filter(r => r.success).length}
+                </span>
+              </div>
+              <div className={`flex items-center gap-2 ${showGutters ? 'text-red-700' : 'text-red-400'}`}>
+                <span className="font-mono text-sm">✗ Failed:</span>
+                <span className="font-mono text-sm font-bold">
+                  {restyleResults.filter(r => !r.success).length}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Thumbnail Grid */}
+          {restyleResults.length > 0 && (
+            <div className="mb-6">
+              <p className={`font-mono text-xs uppercase tracking-wider mb-2 ${
+                showGutters ? 'text-gray-500' : 'text-steel-500'
+              }`}>
+                Completed Panels:
+              </p>
+              <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                {restyleResults.map((result, idx) => (
+                  <div 
+                    key={idx}
+                    className={`relative aspect-square rounded overflow-hidden ${
+                      result.success 
+                        ? 'border-2 border-green-500'
+                        : 'border-2 border-red-500'
+                    }`}
+                  >
+                    {result.imageUrl ? (
+                      <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center ${
+                        showGutters ? 'bg-red-100' : 'bg-red-900/20'
+                      }`}>
+                        <X size={16} className="text-red-500" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            {restyleCurrentPanel < restyleTotalPanels ? (
+              <button
+                onClick={handleCancelRestyle}
+                className={`flex-1 px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider transition-colors ${
+                  showGutters 
+                    ? 'bg-red-100 hover:bg-red-200 text-red-700' 
+                    : 'bg-red-900/20 hover:bg-red-900/30 text-red-400'
+                }`}
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                onClick={handleCloseRestyleResults}
+                className="flex-1 px-4 py-2 rounded-lg bg-ember-500 hover:bg-ember-400 text-white font-mono text-xs uppercase tracking-wider transition-colors"
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     )}
     
     {/* Side-by-side Script Panel */}
