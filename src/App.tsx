@@ -30,7 +30,7 @@ import { createInitialState, normalizeProjects } from './state/initialState';
 import { Action } from './state/actions';
 import { genId } from './utils/helpers';
 import { getImage, saveImage } from './services/imageStorage';
-import { ART_STYLES, Icons, ASPECT_CONFIGS } from './constants';
+import { ART_STYLES, Icons, ASPECT_CONFIGS, GENERATION_DELAY_MS } from './constants';
 import { ScriptImportModal } from './components/ScriptImportModal';
 import { ParseResult } from './services/scriptParser';
 
@@ -574,7 +574,7 @@ function AppContent() {
           const storedRef = await saveImage(panel.id, url);
           dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { imageUrl: storedRef } });
         }
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, GENERATION_DELAY_MS));
       }
     } catch (e: any) {
       alert(`Batch Failed: ${e.message}`);
@@ -636,7 +636,7 @@ function AppContent() {
         }
         
         // Delay between generations (same as AUTO-INK)
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, GENERATION_DELAY_MS));
         
       } catch (err) {
         console.error(`Failed to generate panel ${i + 1}:`, err);

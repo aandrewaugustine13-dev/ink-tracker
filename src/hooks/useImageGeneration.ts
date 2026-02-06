@@ -13,28 +13,28 @@ function buildCharacterPrompt(char: Character): string {
   const parts: string[] = [char.name];
   
   if (char.appearance) {
-    const a = char.appearance;
+    const appearance = char.appearance;
     const desc: string[] = [];
     
-    if (a.age) desc.push(a.age);
-    if (a.gender) desc.push(a.gender);
-    if (a.ethnicity) desc.push(a.ethnicity);
-    if (a.height) desc.push(a.height);
-    if (a.build) desc.push(a.build);
-    if (a.skinTone) desc.push(`${a.skinTone} skin`);
-    if (a.hairColor && a.hairStyle) {
-      desc.push(`${a.hairColor} ${a.hairStyle} hair`);
-    } else if (a.hairColor) {
-      desc.push(`${a.hairColor} hair`);
-    } else if (a.hairStyle) {
-      desc.push(`${a.hairStyle} hair`);
+    if (appearance.age) desc.push(appearance.age);
+    if (appearance.gender) desc.push(appearance.gender);
+    if (appearance.ethnicity) desc.push(appearance.ethnicity);
+    if (appearance.height) desc.push(appearance.height);
+    if (appearance.build) desc.push(appearance.build);
+    if (appearance.skinTone) desc.push(`${appearance.skinTone} skin`);
+    if (appearance.hairColor && appearance.hairStyle) {
+      desc.push(`${appearance.hairColor} ${appearance.hairStyle} hair`);
+    } else if (appearance.hairColor) {
+      desc.push(`${appearance.hairColor} hair`);
+    } else if (appearance.hairStyle) {
+      desc.push(`${appearance.hairStyle} hair`);
     }
-    if (a.eyeColor) desc.push(`${a.eyeColor} eyes`);
-    if (a.facialFeatures) desc.push(a.facialFeatures);
-    if (a.distinguishingMarks) desc.push(a.distinguishingMarks);
-    if (a.clothing) desc.push(`wearing ${a.clothing}`);
-    if (a.accessories) desc.push(`with ${a.accessories}`);
-    if (a.additionalNotes) desc.push(a.additionalNotes);
+    if (appearance.eyeColor) desc.push(`${appearance.eyeColor} eyes`);
+    if (appearance.facialFeatures) desc.push(appearance.facialFeatures);
+    if (appearance.distinguishingMarks) desc.push(appearance.distinguishingMarks);
+    if (appearance.clothing) desc.push(`wearing ${appearance.clothing}`);
+    if (appearance.accessories) desc.push(`with ${appearance.accessories}`);
+    if (appearance.additionalNotes) desc.push(appearance.additionalNotes);
     
     if (desc.length > 0) {
       parts.push(`(${desc.join(', ')})`);
