@@ -13,6 +13,7 @@ export type Action =
 | { type: 'UPDATE_PROJECT_GROK_KEY'; projectId: string; apiKey: string }
 | { type: 'UPDATE_PROJECT_FAL_KEY'; projectId: string; apiKey: string }
 | { type: 'UPDATE_PROJECT_SEAART_KEY'; projectId: string; apiKey: string }
+| { type: 'UPDATE_PROJECT_OPENAI_KEY'; projectId: string; apiKey: string }
 | { type: 'DELETE_PROJECT'; id: string }
 | { type: 'ADD_ISSUE'; projectId: string; title?: string }
 | { type: 'UPDATE_ISSUE'; issueId: string; updates: Partial<Issue> }
