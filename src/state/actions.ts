@@ -24,6 +24,7 @@ export type Action =
 | { type: 'UPDATE_PANEL'; panelId: string; updates: Partial<Panel> }
 | { type: 'DELETE_PANEL'; panelId: string; pageId: string }
 | { type: 'REORDER_PANELS'; pageId: string; panels: Panel[] }
+| { type: 'REORDER_PAGES'; issueId: string; oldIndex: number; newIndex: number }
 | { type: 'ADD_CHARACTER'; name: string; description: string; appearance?: Character['appearance'] }
 | { type: 'UPDATE_CHARACTER'; id: string; updates: Partial<Omit<Character, 'id'>> }
 | { type: 'DELETE_CHARACTER'; id: string }

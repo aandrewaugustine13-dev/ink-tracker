@@ -11,6 +11,75 @@ import { saveImage } from '../services/imageStorage';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../services/supabase';
 import { PageThumbnails } from './PageThumbnails';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
+import { Page } from '../types';
+
+interface SortablePageItemProps {
+    page: Page;
+    isActive: boolean;
+    dispatch: React.Dispatch<Action>;
+    panelCount: number;
+}
+
+const SortablePageItem: React.FC<SortablePageItemProps> = ({ page, isActive, dispatch, panelCount }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: page.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+            <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing touch-none p-1 text-steel-600 hover:text-ember-500 transition-colors"
+                title="Drag to reorder"
+            >
+                <GripVertical size={14} />
+            </button>
+            <button
+                onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: page.id })}
+                className={`flex-1 text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all ${
+                    isActive ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
+                }`}
+            >
+                <div className="flex justify-between items-center w-full">
+                    <span>PAGE {page.number}</span>
+                    <span className="opacity-40 text-[9px]">{panelCount}F</span>
+                </div>
+                {panelCount > 0 && (
+                    <PageThumbnails panels={page.panels} />
+                )}
+            </button>
+        </div>
+    );
+};
 
 interface SidebarProps {
     state: AppState;
@@ -25,6 +94,39 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
     const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
     const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
     const typeLabel = activeProject?.issueType === 'issue' ? 'Issue' : 'Chapter';
+
+    // DnD sensors for page reordering
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Handle page drag end
+    const handlePageDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        
+        if (!over || active.id === over.id) return;
+        
+        if (!activeIssue) return;
+        
+        const oldIndex = activeIssue.pages.findIndex(p => p.id === active.id);
+        const newIndex = activeIssue.pages.findIndex(p => p.id === over.id);
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+            dispatch({
+                type: 'REORDER_PAGES',
+                issueId: activeIssue.id,
+                oldIndex,
+                newIndex,
+            });
+        }
+    };
 
     // Updated style groups with new categories
     const STYLE_GROUPS: Record<string, string[]> = {
@@ -576,23 +678,26 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                     </div>
                                     {isActive && (
                                         <div className="px-2 py-2 border-t border-ember-500/10 space-y-1 animate-fade-in">
-                                            {iss.pages.map(pg => (
-                                                <button
-                                                    key={pg.id}
-                                                    onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
-                                                    className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all ${
-                                                        state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
-                                                    }`}
+                                            <DndContext
+                                                sensors={sensors}
+                                                collisionDetection={closestCenter}
+                                                onDragEnd={handlePageDragEnd}
+                                            >
+                                                <SortableContext
+                                                    items={iss.pages.map(p => p.id)}
+                                                    strategy={verticalListSortingStrategy}
                                                 >
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span>PAGE {pg.number}</span>
-                                                        <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
-                                                    </div>
-                                                    {pg.panels.length > 0 && (
-                                                        <PageThumbnails panels={pg.panels} />
-                                                    )}
-                                                </button>
-                                            ))}
+                                                    {iss.pages.map(pg => (
+                                                        <SortablePageItem
+                                                            key={pg.id}
+                                                            page={pg}
+                                                            isActive={state.activePageId === pg.id}
+                                                            dispatch={dispatch}
+                                                            panelCount={pg.panels.length}
+                                                        />
+                                                    ))}
+                                                </SortableContext>
+                                            </DndContext>
                                             <button
                                                 onClick={() => dispatch({ type: 'ADD_PAGE', issueId: iss.id })}
                                                 className="w-full py-1 text-center text-[10px] font-mono text-steel-600 hover:text-ember-500 hover:bg-ink-800 rounded transition-all mt-1 uppercase tracking-tighter"

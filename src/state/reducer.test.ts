@@ -226,3 +226,209 @@ describe('reducer - UPDATE_PANEL prompt history', () => {
         expect(panel.promptHistory![0]).toBe('Initial prompt');
     });
 });
+
+describe('reducer - REORDER_PAGES action', () => {
+    const createMockStateWithPages = (): AppState => ({
+        projects: [{
+            id: 'p1',
+            title: 'Test Project',
+            style: 'classic-noir',
+            issueType: 'issue',
+            imageProvider: 'gemini',
+            projectType: 'comic',
+            characters: [],
+            issues: [{
+                id: 'i1',
+                title: 'Issue #1',
+                pages: [
+                    { id: 'page1', number: 1, panels: [] },
+                    { id: 'page2', number: 2, panels: [] },
+                    { id: 'page3', number: 3, panels: [] },
+                    { id: 'page4', number: 4, panels: [] },
+                ]
+            }]
+        }],
+        activeProjectId: 'p1',
+        activeIssueId: 'i1',
+        activePageId: 'page1'
+    });
+
+    test('reorders pages from index 0 to index 2', () => {
+        const state = createMockStateWithPages();
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 0,
+            newIndex: 2
+        });
+
+        const pages = newState.projects[0].issues[0].pages;
+        expect(pages[0].id).toBe('page2');
+        expect(pages[1].id).toBe('page3');
+        expect(pages[2].id).toBe('page1');
+        expect(pages[3].id).toBe('page4');
+    });
+
+    test('reorders pages from index 3 to index 0', () => {
+        const state = createMockStateWithPages();
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 3,
+            newIndex: 0
+        });
+
+        const pages = newState.projects[0].issues[0].pages;
+        expect(pages[0].id).toBe('page4');
+        expect(pages[1].id).toBe('page1');
+        expect(pages[2].id).toBe('page2');
+        expect(pages[3].id).toBe('page3');
+    });
+
+    test('reorders pages from index 1 to index 2', () => {
+        const state = createMockStateWithPages();
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 1,
+            newIndex: 2
+        });
+
+        const pages = newState.projects[0].issues[0].pages;
+        expect(pages[0].id).toBe('page1');
+        expect(pages[1].id).toBe('page3');
+        expect(pages[2].id).toBe('page2');
+        expect(pages[3].id).toBe('page4');
+    });
+
+    test('renumbers pages correctly after reordering', () => {
+        const state = createMockStateWithPages();
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 0,
+            newIndex: 2
+        });
+
+        const pages = newState.projects[0].issues[0].pages;
+        expect(pages[0].number).toBe(1);
+        expect(pages[1].number).toBe(2);
+        expect(pages[2].number).toBe(3);
+        expect(pages[3].number).toBe(4);
+    });
+
+    test('does not affect other issues when reordering pages', () => {
+        const state: AppState = {
+            projects: [{
+                id: 'p1',
+                title: 'Test Project',
+                style: 'classic-noir',
+                issueType: 'issue',
+                imageProvider: 'gemini',
+                projectType: 'comic',
+                characters: [],
+                issues: [
+                    {
+                        id: 'i1',
+                        title: 'Issue #1',
+                        pages: [
+                            { id: 'page1', number: 1, panels: [] },
+                            { id: 'page2', number: 2, panels: [] },
+                        ]
+                    },
+                    {
+                        id: 'i2',
+                        title: 'Issue #2',
+                        pages: [
+                            { id: 'page3', number: 1, panels: [] },
+                            { id: 'page4', number: 2, panels: [] },
+                        ]
+                    }
+                ]
+            }],
+            activeProjectId: 'p1',
+            activeIssueId: 'i1',
+            activePageId: 'page1'
+        };
+
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 0,
+            newIndex: 1
+        });
+
+        // Issue 1 should be reordered
+        const issue1Pages = newState.projects[0].issues[0].pages;
+        expect(issue1Pages[0].id).toBe('page2');
+        expect(issue1Pages[1].id).toBe('page1');
+
+        // Issue 2 should remain unchanged
+        const issue2Pages = newState.projects[0].issues[1].pages;
+        expect(issue2Pages[0].id).toBe('page3');
+        expect(issue2Pages[1].id).toBe('page4');
+    });
+
+    test('preserves panels within pages when reordering', () => {
+        const state: AppState = {
+            projects: [{
+                id: 'p1',
+                title: 'Test Project',
+                style: 'classic-noir',
+                issueType: 'issue',
+                imageProvider: 'gemini',
+                projectType: 'comic',
+                characters: [],
+                issues: [{
+                    id: 'i1',
+                    title: 'Issue #1',
+                    pages: [
+                        { 
+                            id: 'page1', 
+                            number: 1, 
+                            panels: [{ 
+                                id: 'panel1', 
+                                prompt: 'Panel 1', 
+                                aspectRatio: AspectRatio.TALL,
+                                characterIds: [],
+                                textElements: []
+                            }] 
+                        },
+                        { 
+                            id: 'page2', 
+                            number: 2, 
+                            panels: [{ 
+                                id: 'panel2', 
+                                prompt: 'Panel 2', 
+                                aspectRatio: AspectRatio.WIDE,
+                                characterIds: [],
+                                textElements: []
+                            }] 
+                        },
+                    ]
+                }]
+            }],
+            activeProjectId: 'p1',
+            activeIssueId: 'i1',
+            activePageId: 'page1'
+        };
+
+        const newState = appReducer(state, {
+            type: 'REORDER_PAGES',
+            issueId: 'i1',
+            oldIndex: 0,
+            newIndex: 1
+        });
+
+        const pages = newState.projects[0].issues[0].pages;
+        // Page 2 should now be first, but retain its panel
+        expect(pages[0].id).toBe('page2');
+        expect(pages[0].panels[0].id).toBe('panel2');
+        expect(pages[0].panels[0].prompt).toBe('Panel 2');
+        
+        // Page 1 should now be second, but retain its panel
+        expect(pages[1].id).toBe('page1');
+        expect(pages[1].panels[0].id).toBe('panel1');
+        expect(pages[1].panels[0].prompt).toBe('Panel 1');
+    });
+});

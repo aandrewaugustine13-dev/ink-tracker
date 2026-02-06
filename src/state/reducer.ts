@@ -294,6 +294,28 @@ export function appReducer(state: AppState, action: Action): AppState {
             }));
             break;
 
+        case 'REORDER_PAGES':
+            newState.projects = state.projects.map(proj => ({
+                ...proj,
+                issues: proj.issues.map(iss => {
+                    if (iss.id !== action.issueId) return iss;
+                    
+                    // Reorder the pages array
+                    const pages = [...iss.pages];
+                    const [movedPage] = pages.splice(action.oldIndex, 1);
+                    pages.splice(action.newIndex, 0, movedPage);
+                    
+                    // Update page numbers to reflect new order
+                    const renumberedPages = pages.map((page, idx) => ({
+                        ...page,
+                        number: idx + 1
+                    }));
+                    
+                    return { ...iss, pages: renumberedPages };
+                })
+            }));
+            break;
+
         case 'ADD_CHARACTER':
             newState.projects = state.projects.map(proj => {
                 if (proj.id !== state.activeProjectId) return proj;
