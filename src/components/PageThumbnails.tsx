@@ -13,6 +13,8 @@ export function PageThumbnails({ panels }: PageThumbnailsProps) {
     const [thumbnailUrls, setThumbnailUrls] = useState<(string | null)[]>([]);
 
     useEffect(() => {
+        let mounted = true;
+        
         // Load images asynchronously to avoid blocking UI
         const loadThumbnails = async () => {
             const urls = await Promise.all(
@@ -37,17 +39,25 @@ export function PageThumbnails({ panels }: PageThumbnailsProps) {
                     return panel.imageUrl;
                 })
             );
-            setThumbnailUrls(urls);
+            
+            // Only update state if component is still mounted
+            if (mounted) {
+                setThumbnailUrls(urls);
+            }
         };
 
         loadThumbnails();
+        
+        return () => {
+            mounted = false;
+        };
     }, [panels]);
 
     const visiblePanels = panels.slice(0, MAX_THUMBNAILS);
     const remainingCount = Math.max(0, panels.length - MAX_THUMBNAILS);
 
     return (
-        <div className="flex items-center gap-1 mt-1 flex-wrap">
+        <div className="flex items-center gap-1 mt-1">
             {visiblePanels.map((panel, index) => {
                 const thumbnailUrl = thumbnailUrls[index];
                 
