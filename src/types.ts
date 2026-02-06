@@ -61,6 +61,7 @@ export interface Panel {
     referencePanelId?: string;
     referenceStrength?: number;
     title?: string;
+    promptHistory?: string[];
     // Freeform position on canvas
     x?: number;
     y?: number;

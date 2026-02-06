@@ -246,7 +246,26 @@ export function appReducer(state: AppState, action: Action): AppState {
                     ...iss,
                     pages: iss.pages.map(pg => ({
                         ...pg,
-                        panels: pg.panels.map(pan => pan.id === action.panelId ? { ...pan, ...action.updates } : pan)
+                        panels: pg.panels.map(pan => {
+                            if (pan.id !== action.panelId) return pan;
+                            
+                            // Handle prompt history
+                            let updates = { ...action.updates };
+                            if ('prompt' in action.updates && action.updates.prompt !== pan.prompt) {
+                                const oldPrompt = pan.prompt;
+                                if (oldPrompt && oldPrompt.trim()) {
+                                    const history = pan.promptHistory || [];
+                                    const newHistory = [...history, oldPrompt];
+                                    // Cap at 5 entries
+                                    if (newHistory.length > 5) {
+                                        newHistory.shift();
+                                    }
+                                    updates = { ...updates, promptHistory: newHistory };
+                                }
+                            }
+                            
+                            return { ...pan, ...updates };
+                        })
                     }))
                 }))
             }));
