@@ -16,7 +16,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users, Sparkles, Loader2 } from 'lucide-react';
 
 import {
   Page,
@@ -30,7 +30,7 @@ import { createInitialState, normalizeProjects } from './state/initialState';
 import { Action } from './state/actions';
 import { genId } from './utils/helpers';
 import { getImage, saveImage } from './services/imageStorage';
-import { ART_STYLES, Icons, ASPECT_CONFIGS } from './constants';
+import { ART_STYLES, Icons, ASPECT_CONFIGS, GENERATION_DELAY_MS } from './constants';
 import { ScriptImportModal } from './components/ScriptImportModal';
 import { ParseResult } from './services/scriptParser';
 
@@ -43,6 +43,7 @@ import UserGuide from './components/UserGuide';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
+import { useImageGeneration } from './hooks/useImageGeneration';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -158,10 +159,19 @@ function AppContent() {
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
   const [showCharacterBank, setShowCharacterBank] = useState(false);
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
+  
+  // Generate All state
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [currentPanel, setCurrentPanel] = useState(0);
+  const [totalPanels, setTotalPanels] = useState(0);
+  const cancelGenerationRef = useRef(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
+  
+  // Use the shared image generation hook
+  const imageGeneration = activeProject ? useImageGeneration(activeProject) : null;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -564,12 +574,81 @@ function AppContent() {
           const storedRef = await saveImage(panel.id, url);
           dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { imageUrl: storedRef } });
         }
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, GENERATION_DELAY_MS));
       }
     } catch (e: any) {
       alert(`Batch Failed: ${e.message}`);
     } finally { setBatching(false); }
   };
+
+  const handleGenerateAll = async () => {
+    if (!activePage || !activeProject || !imageGeneration) return;
+    
+    // Get panels that need generation (have prompt, no image)
+    const panelsToGenerate = activePage.panels.filter(
+      panel => (panel.prompt?.trim() || panel.characterIds.length > 0) && !panel.imageUrl
+    );
+    
+    if (panelsToGenerate.length === 0) {
+      alert('No panels to generate. All panels either have images or lack prompts.');
+      return;
+    }
+    
+    setIsGeneratingAll(true);
+    setTotalPanels(panelsToGenerate.length);
+    cancelGenerationRef.current = false;
+    
+    for (let i = 0; i < panelsToGenerate.length; i++) {
+      if (cancelGenerationRef.current) {
+        console.log('Generation cancelled by user');
+        break;
+      }
+      
+      setCurrentPanel(i + 1);
+      const panel = panelsToGenerate[i];
+      
+      try {
+        // Get active characters for this panel
+        const activeChars = activeProject.characters.filter(c => panel.characterIds.includes(c.id));
+        
+        // Get reference image if set
+        let initImage: string | undefined;
+        if (panel.referencePanelId) {
+          const refPanel = activePage.panels.find(p => p.id === panel.referencePanelId);
+          if (refPanel?.imageUrl) {
+            const id = refPanel.imageUrl.startsWith('idb://') ? refPanel.imageUrl.slice(6) : null;
+            if (id) initImage = await getImage(id) || undefined;
+          }
+        }
+        
+        // Use the shared hook to generate
+        const url = await imageGeneration.generateImage(
+          panel.prompt || '',
+          panel.aspectRatio,
+          activeChars,
+          initImage,
+          panel.referenceStrength ?? 0.7
+        );
+        
+        if (url) {
+          const storedRef = await saveImage(panel.id, url);
+          dispatch({ type: 'UPDATE_PANEL', panelId: panel.id, updates: { imageUrl: storedRef } });
+        }
+        
+        // Delay between generations (same as AUTO-INK)
+        await new Promise(r => setTimeout(r, GENERATION_DELAY_MS));
+        
+      } catch (err) {
+        console.error(`Failed to generate panel ${i + 1}:`, err);
+        // Continue to next panel instead of stopping
+      }
+    }
+    
+    setIsGeneratingAll(false);
+    setCurrentPanel(0);
+    setTotalPanels(0);
+  };
+
 
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
@@ -720,6 +799,32 @@ function AppContent() {
     <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
     {batching ? <Icons.Loader /> : <Icons.Magic />}AUTO-INK
     </button>
+    {/* Generate All Button */}
+    {activePage && activePage.panels.some(panel => (panel.prompt?.trim() || panel.characterIds.length > 0) && !panel.imageUrl) && (
+      <div className="flex flex-col items-center gap-1">
+        <button
+          onClick={handleGenerateAll}
+          disabled={isGeneratingAll || batching}
+          className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+        >
+          {isGeneratingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          {isGeneratingAll ? `GENERATING ${currentPanel}/${totalPanels}...` : 'GENERATE ALL'}
+        </button>
+        {!isGeneratingAll && (
+          <p className="text-[9px] font-mono text-steel-600 mt-1 max-w-[200px] text-center">
+            Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
+          </p>
+        )}
+        {isGeneratingAll && (
+          <button
+            onClick={() => { cancelGenerationRef.current = true; }}
+            className="text-xs font-mono text-red-500 hover:text-red-400"
+          >
+            CANCEL
+          </button>
+        )}
+      </div>
+    )}
     {/* Page Templates */}
     <div className="relative">
       <button
