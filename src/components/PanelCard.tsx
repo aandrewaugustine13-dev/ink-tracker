@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload, RefreshCw, Copy, ClipboardPaste } from 'lucide-react';
+import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload, RefreshCw, Copy, ClipboardPaste, History } from 'lucide-react';
 import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
@@ -113,6 +113,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
     const [showAspectMenu, setShowAspectMenu] = useState(false);
     const [showCharMenu, setShowCharMenu] = useState(false);
     const [showRefMenu, setShowRefMenu] = useState(false);
+    const [showPromptHistory, setShowPromptHistory] = useState(false);
     const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
     
     // Resizing state
@@ -588,17 +589,66 @@ const PanelCard: React.FC<PanelCardProps> = ({
                 </div>
 
                 {/* Prompt textarea */}
-                <textarea
-                    value={panel.prompt || ''}
-                    onChange={handlePromptChange}
-                    placeholder="Describe this panel... (scene, action, mood)"
-                    rows={3}
-                    className={`w-full rounded-lg px-3 py-2 text-sm resize-none transition-colors outline-none ${
-                        showGutters 
-                            ? 'bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:border-blue-400' 
-                            : 'bg-ink-950 border border-ink-800 text-steel-200 placeholder-steel-600 focus:border-ember-500'
-                    }`}
-                />
+                <div className="relative">
+                    <textarea
+                        value={panel.prompt || ''}
+                        onChange={handlePromptChange}
+                        placeholder="Describe this panel... (scene, action, mood)"
+                        rows={3}
+                        className={`w-full rounded-lg px-3 py-2 text-sm resize-none transition-colors outline-none ${
+                            showGutters 
+                                ? 'bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:border-blue-400' 
+                                : 'bg-ink-950 border border-ink-800 text-steel-200 placeholder-steel-600 focus:border-ember-500'
+                        }`}
+                    />
+                    
+                    {/* Prompt History Button */}
+                    {panel.promptHistory && panel.promptHistory.length > 0 && (
+                        <button
+                            onClick={() => setShowPromptHistory(!showPromptHistory)}
+                            className={`absolute right-2 top-2 p-1 rounded transition-colors ${
+                                showGutters 
+                                    ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
+                                    : 'bg-ink-800 text-steel-500 hover:bg-ink-700'
+                            }`}
+                            title="View prompt history"
+                        >
+                            <History size={14} />
+                        </button>
+                    )}
+                    
+                    {/* Prompt History Dropdown */}
+                    {showPromptHistory && panel.promptHistory && panel.promptHistory.length > 0 && (
+                        <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border py-1 min-w-[300px] max-w-full max-h-64 overflow-y-auto ${
+                            showGutters ? 'bg-white border-gray-200' : 'bg-ink-900 border-ink-700'
+                        }`}>
+                            <div className={`px-3 py-1.5 text-[10px] font-mono uppercase ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                                Prompt History
+                            </div>
+                            {[...panel.promptHistory].reverse().map((historyPrompt, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        handlePromptChange({ target: { value: historyPrompt } } as React.ChangeEvent<HTMLTextAreaElement>);
+                                        setShowPromptHistory(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                                        showGutters 
+                                            ? 'text-gray-700 hover:bg-gray-100' 
+                                            : 'text-steel-400 hover:bg-ink-800'
+                                    }`}
+                                >
+                                    <div className={`text-[10px] mb-1 ${showGutters ? 'text-gray-500' : 'text-steel-600'}`}>
+                                        {(panel.promptHistory?.length || 0) - idx} version{(panel.promptHistory?.length || 0) - idx === 1 ? '' : 's'} ago
+                                    </div>
+                                    <div className="line-clamp-3">
+                                        {historyPrompt}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {/* Character selector */}
                 <div className="relative">
