@@ -10,6 +10,7 @@ import { generateSeaArtImage } from '../services/seaartService';
 import { saveImage, getImage } from '../services/imageStorage';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../services/supabase';
+import { PageThumbnails } from './PageThumbnails';
 
 interface SidebarProps {
     state: AppState;
