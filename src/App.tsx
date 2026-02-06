@@ -103,6 +103,29 @@ const createScaleModifier = (scale: number): Modifier => ({ transform }) => {
   };
 };
 
+// Canvas constants
+const DEFAULT_CANVAS_WIDTH = 2000;
+const DEFAULT_CANVAS_HEIGHT = 1500;
+
+// Interface for canvas component props
+interface CanvasProps {
+  activePage: Page | undefined;
+  activeProject: Project | undefined;
+  activeIssue?: Issue | undefined;
+  dispatch: React.Dispatch<Action>;
+  sensors: any;
+  handleDragStart: (event: DragStartEvent) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
+  activeId: string | null;
+  activePanelForOverlay: any;
+  showGutters: boolean;
+  zoomEnabled: boolean;
+  selectedPanelId: string | null;
+  setSelectedPanelId: (id: string | null) => void;
+  copiedPanelSettings: { aspectRatio: AspectRatio; characterIds: string[] } | null;
+  setCopiedPanelSettings: (settings: { aspectRatio: AspectRatio; characterIds: string[] } | null) => void;
+}
+
 function AppContent() {
   const { user, signOut, loading } = useAuth();
   const [stateWithHistory, dispatchWithHistory] = useReducer(
@@ -1031,7 +1054,19 @@ function AppContent() {
           <ChevronLeft size={20} />
         </button>
         <span className="text-[10px] font-mono uppercase tracking-wide">
-          Page {activePage?.number || 1}
+          {showSpreadView && activeIssue && activePage ? (() => {
+            const currentIndex = activeIssue.pages.findIndex((p: Page) => p.id === activePage.id);
+            const leftPage = activePage.number % 2 === 0 ? activePage : (currentIndex > 0 ? activeIssue.pages[currentIndex - 1] : null);
+            const rightPage = activePage.number % 2 === 0 ? (currentIndex < activeIssue.pages.length - 1 ? activeIssue.pages[currentIndex + 1] : null) : activePage;
+            if (leftPage && rightPage) {
+              return `Pages ${leftPage.number}-${rightPage.number}`;
+            } else if (rightPage) {
+              return `Page ${rightPage.number}`;
+            } else if (leftPage) {
+              return `Page ${leftPage.number}`;
+            }
+            return 'Page 1';
+          })() : `Page ${activePage?.number || 1}`}
         </span>
         <button 
           onClick={handleNextPage}
@@ -1190,16 +1225,16 @@ function ZoomableCanvas({
 
   // Calculate canvas size based on panel positions
   const canvasSize = useMemo(() => {
-    if (!activePage?.panels.length) return { width: 2000, height: 1500 };
-    let maxX = 2000;
-    let maxY = 1500;
+    if (!activePage?.panels.length) return { width: DEFAULT_CANVAS_WIDTH, height: DEFAULT_CANVAS_HEIGHT };
+    let maxX = DEFAULT_CANVAS_WIDTH;
+    let maxY = DEFAULT_CANVAS_HEIGHT;
     activePage.panels.forEach((p: any) => {
       const panelRight = (p.x || 0) + (p.width || 360) + 100;
       const panelBottom = (p.y || 0) + (p.height || 420) + 100;
       if (panelRight > maxX) maxX = panelRight;
       if (panelBottom > maxY) maxY = panelBottom;
     });
-    return { width: Math.max(2000, maxX), height: Math.max(1500, maxY) };
+    return { width: Math.max(DEFAULT_CANVAS_WIDTH, maxX), height: Math.max(DEFAULT_CANVAS_HEIGHT, maxY) };
   }, [activePage?.panels]);
 
   return (
@@ -1271,7 +1306,7 @@ function SpreadCanvas({
   activeId, activePanelForOverlay, showGutters, zoomEnabled,
   selectedPanelId, setSelectedPanelId, copiedPanelSettings, setCopiedPanelSettings,
   activeIssue
-}: any) {
+}: CanvasProps) {
   const { state: transformState } = useTransformContext() as any;
   const scale = transformState?.scale || 1;
   const modifiers = useMemo(() => [createScaleModifier(scale)], [scale]);
@@ -1305,7 +1340,7 @@ function SpreadCanvas({
       );
     }
 
-    const canvasSize = { width: 2000, height: 1500 };
+    const canvasSize = { width: DEFAULT_CANVAS_WIDTH, height: DEFAULT_CANVAS_HEIGHT };
     page.panels.forEach((p: any) => {
       const panelRight = (p.x || 0) + (p.width || 360) + 100;
       const panelBottom = (p.y || 0) + (p.height || 420) + 100;
