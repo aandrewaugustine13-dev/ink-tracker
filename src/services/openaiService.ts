@@ -15,6 +15,23 @@ function getImageSize(aspectRatio: string): string {
   }
 }
 
+interface OpenAIImageRequest {
+  model: string;
+  prompt: string;
+  n: number;
+  size: string;
+  quality: string;
+  response_format: string;
+}
+
+/**
+ * Generates an image using OpenAI's DALL-E 3 API.
+ * @param prompt - The text prompt for image generation
+ * @param aspectRatio - The desired aspect ratio
+ * @param apiKey - The OpenAI API key
+ * @param initImage - Not supported by DALL-E 3; kept for interface consistency
+ * @param strength - Not supported by DALL-E 3; kept for interface consistency
+ */
 export async function generateOpenAIImage(
   prompt: string,
   aspectRatio: AspectRatio | string,
@@ -24,14 +41,14 @@ export async function generateOpenAIImage(
 ): Promise<string> {
   if (!apiKey || !apiKey.trim()) throw new Error('OpenAI API key is required');
 
-  const body = {
+  const body: OpenAIImageRequest = {
     model: 'dall-e-3',
     prompt: (prompt || '').trim(),
     n: 1,
     size: getImageSize(aspectRatio),
     quality: 'standard',
     response_format: 'b64_json'
-  } as any;
+  };
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
