@@ -16,7 +16,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users, Sparkles, Loader2 } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, RefreshCw, Copy, ClipboardPaste, Users, Sparkles, Loader2, BookOpen } from 'lucide-react';
 
 import {
   Page,
@@ -151,6 +151,7 @@ function AppContent() {
   const [showScriptImport, setShowScriptImport] = useState(false);
   const [zoomEnabled, setZoomEnabled] = useState(false);
   const [showGutters, setShowGutters] = useState(false);
+  const [showSpreadView, setShowSpreadView] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [showScriptPanel, setShowScriptPanel] = useState(false);
   const [showReadThrough, setShowReadThrough] = useState(false);
@@ -649,6 +650,27 @@ function AppContent() {
     setTotalPanels(0);
   };
 
+  // Page navigation handlers for spread view
+  const handlePreviousPage = () => {
+    if (!activeIssue || !activePage) return;
+    const currentIndex = activeIssue.pages.findIndex((p: Page) => p.id === activePage.id);
+    const step = showSpreadView ? 2 : 1;
+    const newIndex = Math.max(0, currentIndex - step);
+    if (newIndex !== currentIndex) {
+      dispatch({ type: 'SET_ACTIVE_PAGE', id: activeIssue.pages[newIndex].id });
+    }
+  };
+
+  const handleNextPage = () => {
+    if (!activeIssue || !activePage) return;
+    const currentIndex = activeIssue.pages.findIndex((p: Page) => p.id === activePage.id);
+    const step = showSpreadView ? 2 : 1;
+    const newIndex = Math.min(activeIssue.pages.length - 1, currentIndex + step);
+    if (newIndex !== currentIndex) {
+      dispatch({ type: 'SET_ACTIVE_PAGE', id: activeIssue.pages[newIndex].id });
+    }
+  };
+
 
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
@@ -773,6 +795,23 @@ function AppContent() {
     showGutters={showGutters}
     setShowGutters={setShowGutters}
     />
+    
+    {/* Spread View Toggle */}
+    <button
+      onClick={() => setShowSpreadView(!showSpreadView)}
+      className={`p-2 rounded-lg transition-all ${
+        showSpreadView
+          ? showGutters 
+            ? 'bg-ember-500 text-white' 
+            : 'bg-ember-500 text-ink-950'
+          : showGutters 
+            ? 'hover:bg-gray-200 text-gray-600' 
+            : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+      }`}
+      title="Toggle Spread View (Two-Page Layout)"
+    >
+      <BookOpen size={18} />
+    </button>
     </div>
 
     {/* Right Side: Action Buttons - Wrapped */}
@@ -926,22 +965,42 @@ function AppContent() {
         wrapperClass="w-full h-full" 
         contentClass=""
         >
-        <ZoomableCanvas
-        activePage={activePage}
-        activeProject={activeProject}
-        dispatch={dispatch}
-        sensors={sensors}
-        handleDragStart={handleDragStart}
-        handleDragEnd={handleDragEnd}
-        activeId={activeId}
-        activePanelForOverlay={activePanelForOverlay}
-        showGutters={showGutters}
-        zoomEnabled={zoomEnabled}
-        selectedPanelId={selectedPanelId}
-        setSelectedPanelId={setSelectedPanelId}
-        copiedPanelSettings={copiedPanelSettings}
-        setCopiedPanelSettings={setCopiedPanelSettings}
-        />
+        {showSpreadView ? (
+          <SpreadCanvas
+          activePage={activePage}
+          activeProject={activeProject}
+          activeIssue={activeIssue}
+          dispatch={dispatch}
+          sensors={sensors}
+          handleDragStart={handleDragStart}
+          handleDragEnd={handleDragEnd}
+          activeId={activeId}
+          activePanelForOverlay={activePanelForOverlay}
+          showGutters={showGutters}
+          zoomEnabled={zoomEnabled}
+          selectedPanelId={selectedPanelId}
+          setSelectedPanelId={setSelectedPanelId}
+          copiedPanelSettings={copiedPanelSettings}
+          setCopiedPanelSettings={setCopiedPanelSettings}
+          />
+        ) : (
+          <ZoomableCanvas
+          activePage={activePage}
+          activeProject={activeProject}
+          dispatch={dispatch}
+          sensors={sensors}
+          handleDragStart={handleDragStart}
+          handleDragEnd={handleDragEnd}
+          activeId={activeId}
+          activePanelForOverlay={activePanelForOverlay}
+          showGutters={showGutters}
+          zoomEnabled={zoomEnabled}
+          selectedPanelId={selectedPanelId}
+          setSelectedPanelId={setSelectedPanelId}
+          copiedPanelSettings={copiedPanelSettings}
+          setCopiedPanelSettings={setCopiedPanelSettings}
+          />
+        )}
         </TransformComponent>
         </div>
 
@@ -956,6 +1015,36 @@ function AppContent() {
         <span className="text-[9px] font-mono uppercase mb-0.5 opacity-60">Project</span>
         <span className={`text-[11px] font-mono uppercase font-bold truncate max-w-[120px] ${showGutters ? 'text-black' : 'text-steel-200'}`}>{activeProject?.title}</span>
         </div>
+        </div>
+        <div className={`h-5 w-px ${showGutters ? 'bg-black/20' : 'bg-ink-700'}`}></div>
+        <div className="flex items-center gap-4">
+        <button 
+          onClick={handlePreviousPage}
+          disabled={!activeIssue || activeIssue.pages.findIndex((p: Page) => p.id === activePage?.id) === 0}
+          className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+            showGutters 
+              ? 'hover:bg-gray-200 text-gray-600' 
+              : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+          }`}
+          title="Previous Page"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="text-[10px] font-mono uppercase tracking-wide">
+          Page {activePage?.number || 1}
+        </span>
+        <button 
+          onClick={handleNextPage}
+          disabled={!activeIssue || !activePage || activeIssue.pages.findIndex((p: Page) => p.id === activePage.id) >= activeIssue.pages.length - 1}
+          className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+            showGutters 
+              ? 'hover:bg-gray-200 text-gray-600' 
+              : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+          }`}
+          title="Next Page"
+        >
+          <ChevronRight size={20} />
+        </button>
         </div>
         </div>
       </>
@@ -1170,6 +1259,153 @@ function ZoomableCanvas({
       ))}
       </DndContext>
     )}
+    </div>
+  );
+}
+
+/**
+ * Component to display two pages side-by-side in spread view
+ */
+function SpreadCanvas({
+  activePage, activeProject, dispatch, sensors, handleDragStart, handleDragEnd,
+  activeId, activePanelForOverlay, showGutters, zoomEnabled,
+  selectedPanelId, setSelectedPanelId, copiedPanelSettings, setCopiedPanelSettings,
+  activeIssue
+}: any) {
+  const { state: transformState } = useTransformContext() as any;
+  const scale = transformState?.scale || 1;
+  const modifiers = useMemo(() => [createScaleModifier(scale)], [scale]);
+
+  if (!activePage || !activeIssue) return null;
+
+  // Determine which pages to show
+  const currentPageIndex = activeIssue.pages.findIndex((p: Page) => p.id === activePage.id);
+  
+  // For even-numbered pages (2, 4, 6...), show current (even) on left, next (odd) on right
+  // For odd-numbered pages (1, 3, 5...), show previous (even) on left, current (odd) on right
+  let leftPage: Page | null = null;
+  let rightPage: Page | null = null;
+
+  if (activePage.number % 2 === 0) {
+    // Current page is even - goes on left
+    leftPage = activePage;
+    rightPage = currentPageIndex < activeIssue.pages.length - 1 ? activeIssue.pages[currentPageIndex + 1] : null;
+  } else {
+    // Current page is odd - goes on right
+    leftPage = currentPageIndex > 0 ? activeIssue.pages[currentPageIndex - 1] : null;
+    rightPage = activePage;
+  }
+
+  const renderPageCanvas = (page: Page | null, side: 'left' | 'right') => {
+    if (!page) {
+      return (
+        <div className={`flex-1 flex items-center justify-center ${showGutters ? 'bg-gray-100' : 'bg-ink-900/50'}`}>
+          <p className={`font-mono text-sm ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>No page</p>
+        </div>
+      );
+    }
+
+    const canvasSize = { width: 2000, height: 1500 };
+    page.panels.forEach((p: any) => {
+      const panelRight = (p.x || 0) + (p.width || 360) + 100;
+      const panelBottom = (p.y || 0) + (p.height || 420) + 100;
+      canvasSize.width = Math.max(canvasSize.width, panelRight);
+      canvasSize.height = Math.max(canvasSize.height, panelBottom);
+    });
+
+    return (
+      <div className="flex-1 flex flex-col">
+        <div 
+          className={`relative transition-all ${zoomEnabled ? 'pointer-events-none [&>*]:pointer-events-auto' : ''}`}
+          style={{ 
+            width: canvasSize.width, 
+            height: canvasSize.height,
+            minWidth: '100%',
+            minHeight: '100%',
+            background: showGutters 
+              ? 'repeating-linear-gradient(0deg, transparent, transparent 39px, #e5e5e5 39px, #e5e5e5 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #e5e5e5 39px, #e5e5e5 40px)'
+              : 'repeating-linear-gradient(0deg, transparent, transparent 39px, #1e1e26 39px, #1e1e26 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #1e1e26 39px, #1e1e26 40px)'
+          }}
+        >
+          {page.panels.length === 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
+              <p className={`font-display text-3xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Empty Page</p>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
+              {page.panels.map((panel: any, idx: number) => (
+                <PanelCard
+                  key={panel.id}
+                  panel={panel}
+                  pageId={page.id}
+                  dispatch={dispatch}
+                  project={activeProject!}
+                  characters={activeProject?.characters || []}
+                  index={idx}
+                  total={page.panels.length}
+                  showGutters={showGutters}
+                  activePage={page}
+                  isDragging={activeId === panel.id}
+                  isSelected={selectedPanelId === panel.id}
+                  onSelect={() => setSelectedPanelId(panel.id)}
+                  copiedSettings={copiedPanelSettings}
+                  onCopySettings={() => setCopiedPanelSettings({ aspectRatio: panel.aspectRatio, characterIds: panel.characterIds })}
+                  onPasteSettings={() => {
+                    if (copiedPanelSettings) {
+                      dispatch({ 
+                        type: 'UPDATE_PANEL', 
+                        panelId: panel.id, 
+                        updates: { 
+                          aspectRatio: copiedPanelSettings.aspectRatio, 
+                          characterIds: copiedPanelSettings.characterIds 
+                        } 
+                      });
+                    }
+                  }}
+                />
+              ))}
+            </DndContext>
+          )}
+        </div>
+        {/* Page number label */}
+        <div className={`text-center py-2 text-xs font-mono ${showGutters ? 'text-gray-600 bg-gray-50' : 'text-steel-500 bg-ink-900/50'}`}>
+          Page {page.number}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex-1 flex">
+      {/* Left page */}
+      <div className="flex-1 flex flex-col border-r-2" style={{ 
+        borderColor: showGutters ? '#d1d5db' : '#2a2a35',
+        boxShadow: showGutters 
+          ? 'inset -8px 0 12px -8px rgba(0,0,0,0.15)' 
+          : 'inset -8px 0 12px -8px rgba(0,0,0,0.4)'
+      }}>
+        {renderPageCanvas(leftPage, 'left')}
+      </div>
+
+      {/* Center gutter (book spine) */}
+      <div 
+        className="w-1"
+        style={{ 
+          background: showGutters 
+            ? 'linear-gradient(90deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.1) 100%)'
+            : 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.4) 100%)'
+        }}
+      />
+
+      {/* Right page */}
+      <div className="flex-1 flex flex-col border-l-2" style={{ 
+        borderColor: showGutters ? '#d1d5db' : '#2a2a35',
+        boxShadow: showGutters 
+          ? 'inset 8px 0 12px -8px rgba(0,0,0,0.15)' 
+          : 'inset 8px 0 12px -8px rgba(0,0,0,0.4)'
+      }}>
+        {renderPageCanvas(rightPage, 'right')}
+      </div>
     </div>
   );
 }
