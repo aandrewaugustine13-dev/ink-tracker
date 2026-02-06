@@ -56,6 +56,7 @@ export const normalizeProjects = (projects: Project[]): Project[] => {
             issueType: proj.issueType || 'issue',
             imageProvider: proj.imageProvider || 'gemini',
             projectType: proj.projectType || 'comic',
+            openaiApiKey: proj.openaiApiKey || '',
             fluxModel: proj.fluxModel || 'fal-ai/flux-pro',
             characters: proj.characters || [],
             issues: (proj.issues || []).map((iss) => ({

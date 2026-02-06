@@ -7,6 +7,7 @@ import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 import { generateSeaArtImage } from '../services/seaartService';
+import { generateOpenAIImage } from '../services/openaiService';
 import { saveImage } from '../services/imageStorage';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../services/supabase';
@@ -152,10 +153,12 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
             setSidebarKey(activeProject?.falApiKey || '');
         } else if (activeProject?.imageProvider === 'seaart') {
             setSidebarKey(activeProject?.seaartApiKey || '');
+        } else if (activeProject?.imageProvider === 'openai') {
+            setSidebarKey(activeProject?.openaiApiKey || '');
         } else {
             setSidebarKey('');
         }
-    }, [activeProject?.geminiApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.falApiKey, activeProject?.seaartApiKey, activeProject?.imageProvider]);
+    }, [activeProject?.geminiApiKey, activeProject?.leonardoApiKey, activeProject?.grokApiKey, activeProject?.falApiKey, activeProject?.seaartApiKey, activeProject?.openaiApiKey, activeProject?.imageProvider]);
 
     const [showCharForm, setShowCharForm] = useState(false);
     const [charName, setCharName] = useState('');
@@ -426,6 +429,57 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
         }
     };
 
+    // Generate with OpenAI
+    const handleOpenAIClick = async () => {
+        if (activeProject?.imageProvider !== 'openai') {
+            dispatch({ type: 'UPDATE_PROJECT', id: activeProject!.id, updates: { imageProvider: 'openai' } });
+            return;
+        }
+
+        if (!activeProject?.openaiApiKey) {
+            alert("OpenAI API key is missing. Enter it below and click SET.");
+            return;
+        }
+
+        if (!activePage || activePage.panels.length === 0) {
+            alert("No active page or frames. Add a frame first.");
+            return;
+        }
+
+        const targetPanel = activePage.panels[0];
+        const prompt = targetPanel.prompt?.trim();
+
+        if (!prompt) {
+            alert("No prompt/description in the active frame. Add one first.");
+            return;
+        }
+
+        try {
+            const generatedUrl = await generateOpenAIImage(
+                prompt,
+                targetPanel.aspectRatio || 'square',
+                activeProject.openaiApiKey,
+                undefined,
+                0.7
+            );
+
+            if (!generatedUrl) throw new Error("No image URL returned from OpenAI");
+
+            const storedRef = await saveImage(targetPanel.id, generatedUrl);
+            dispatch({
+                type: 'UPDATE_PANEL',
+                panelId: targetPanel.id,
+                updates: { imageUrl: storedRef }
+            });
+
+            console.log("OpenAI image generated and saved:", generatedUrl);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Check console for details';
+            console.error("OpenAI generation failed:", err);
+            alert(`OpenAI generation failed: ${errorMessage}`);
+        }
+    };
+
     return (
         <aside className="w-72 bg-ink-900 border-r border-ink-700 flex flex-col overflow-hidden z-30">
             <div className="p-6 border-b border-ink-700">
@@ -525,17 +579,30 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                     FAL
                                 </button>
                             </div>
-                            <button
-                                onClick={handleSeaArtClick}
-                                className={`w-full text-[9px] font-mono py-2 rounded-lg transition-all mt-1.5 ${
-                                    activeProject?.imageProvider === 'seaart'
-                                        ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
-                                        : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
-                                }`}
-                                title="SeaArt - Creative image generation"
-                            >
-                                SEAART
-                            </button>
+                            <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                <button
+                                    onClick={handleSeaArtClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'seaart'
+                                            ? 'bg-pink-600 hover:bg-pink-500 text-white font-bold shadow-lg shadow-pink-600/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                    title="SeaArt - Creative image generation"
+                                >
+                                    SEAART
+                                </button>
+                                <button
+                                    onClick={handleOpenAIClick}
+                                    className={`text-[9px] font-mono py-2 rounded-lg transition-all ${
+                                        activeProject?.imageProvider === 'openai'
+                                            ? 'bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg shadow-green-600/30'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                    title="OpenAI GPT Image - gpt-image-1"
+                                >
+                                    OPENAI
+                                </button>
+                            </div>
                         </div>
 
                         {/* API Key Input */}
@@ -546,7 +613,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                      activeProject?.imageProvider === 'leonardo' ? 'Leonardo' :
                                      activeProject?.imageProvider === 'grok' ? 'Grok (xAI)' :
                                      activeProject?.imageProvider === 'fal' ? 'FAL' :
-                                     activeProject?.imageProvider === 'seaart' ? 'SeaArt' : 'API'} Key
+                                     activeProject?.imageProvider === 'seaart' ? 'SeaArt' :
+                                     activeProject?.imageProvider === 'openai' ? 'OpenAI' : 'API'} Key
                                 </span>
                                 {!sidebarKey && <span className="text-red-500 font-bold animate-pulse text-[8px]">REQUIRED</span>}
                             </label>
@@ -571,6 +639,8 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                                 dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                                             } else if (activeProject?.imageProvider === 'seaart') {
                                                 dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
+                                            } else if (activeProject?.imageProvider === 'openai') {
+                                                dispatch({ type: 'UPDATE_PROJECT_OPENAI_KEY', projectId: activeProject.id, apiKey: sidebarKey.trim() });
                                             }
                                             alert('API key saved!');
                                         }
@@ -624,6 +694,15 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                     className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
                                 >
                                     Get key from seaart.ai/api
+                                </a>
+                            ) : activeProject?.imageProvider === 'openai' ? (
+                                <a 
+                                    href="https://platform.openai.com/api-keys" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors"
+                                >
+                                    Get key from platform.openai.com
                                 </a>
                             ) : null}
                         </div>

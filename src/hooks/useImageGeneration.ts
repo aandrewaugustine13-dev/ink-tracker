@@ -5,6 +5,7 @@ import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 import { generateSeaArtImage } from '../services/seaartService';
+import { generateOpenAIImage } from '../services/openaiService';
 
 /**
  * Helper to build a full appearance description for image generation
@@ -131,6 +132,14 @@ export function useImageGeneration(project: Project) {
           fullPrompt, 
           aspectRatio, 
           project.seaartApiKey, 
+          initImage, 
+          referenceStrength
+        );
+      } else if (project.imageProvider === 'openai' && project.openaiApiKey) {
+        url = await generateOpenAIImage(
+          fullPrompt, 
+          aspectRatio, 
+          project.openaiApiKey, 
           initImage, 
           referenceStrength
         );
