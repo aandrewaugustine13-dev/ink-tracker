@@ -43,6 +43,7 @@ import UserGuide from './components/UserGuide';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
+import { useImageGeneration } from './hooks/useImageGeneration';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -163,11 +164,14 @@ function AppContent() {
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [currentPanel, setCurrentPanel] = useState(0);
   const [totalPanels, setTotalPanels] = useState(0);
-  const [cancelGeneration, setCancelGeneration] = useState(false);
+  const cancelGenerationRef = useRef(false);
 
   const activeProject = state.projects.find(p => p.id === state.activeProjectId);
   const activeIssue = activeProject?.issues.find(i => i.id === state.activeIssueId);
   const activePage = activeIssue?.pages.find(p => p.id === state.activePageId);
+  
+  // Use the shared image generation hook
+  const imageGeneration = activeProject ? useImageGeneration(activeProject) : null;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -578,7 +582,7 @@ function AppContent() {
   };
 
   const handleGenerateAll = async () => {
-    if (!activePage || !activeProject) return;
+    if (!activePage || !activeProject || !imageGeneration) return;
     
     // Get panels that need generation (have prompt, no image)
     const panelsToGenerate = activePage.panels.filter(
@@ -592,10 +596,10 @@ function AppContent() {
     
     setIsGeneratingAll(true);
     setTotalPanels(panelsToGenerate.length);
-    setCancelGeneration(false);
+    cancelGenerationRef.current = false;
     
     for (let i = 0; i < panelsToGenerate.length; i++) {
-      if (cancelGeneration) {
+      if (cancelGenerationRef.current) {
         console.log('Generation cancelled by user');
         break;
       }
@@ -604,18 +608,8 @@ function AppContent() {
       const panel = panelsToGenerate[i];
       
       try {
-        // Build prompt using existing logic from generatePage function
-        const styleConfig = ART_STYLES.find(s => s.id === activeProject.style);
-        const stylePrompt = activeProject.style === 'custom' 
-          ? (activeProject.customStylePrompt || '') 
-          : (styleConfig?.prompt || '');
-        
+        // Get active characters for this panel
         const activeChars = activeProject.characters.filter(c => panel.characterIds.includes(c.id));
-        const charSection = activeChars.length > 0 
-          ? `Characters: ${activeChars.map(c => buildCharacterPrompt(c)).join('; ')}.` 
-          : '';
-        
-        const config = ASPECT_CONFIGS[panel.aspectRatio];
         
         // Get reference image if set
         let initImage: string | undefined;
@@ -627,26 +621,14 @@ function AppContent() {
           }
         }
         
-        const consistencySuffix = initImage 
-          ? " Maintain strong visual and character consistency with the reference image. Same lighting, angle, style."
-          : '';
-        const fullPrompt = `${stylePrompt}. ${charSection} ${panel.prompt || ''}.${consistencySuffix}`.trim();
-        
-        // Call the appropriate service based on provider
-        let url: string | undefined;
-        if (activeProject.imageProvider === 'gemini' && activeProject.geminiApiKey) {
-          url = await generateGeminiImage(fullPrompt, config.ratio, activeProject.geminiApiKey, initImage, panel.referenceStrength ?? 0.7);
-        } else if (activeProject.imageProvider === 'leonardo' && activeProject.leonardoApiKey) {
-          url = await generateLeonardoImage(fullPrompt, panel.aspectRatio, activeProject.leonardoApiKey, initImage, panel.referenceStrength ?? 0.7);
-        } else if (activeProject.imageProvider === 'grok' && activeProject.grokApiKey) {
-          url = await generateGrokImage(fullPrompt, panel.aspectRatio, activeProject.grokApiKey, initImage, panel.referenceStrength ?? 0.7);
-        } else if (activeProject.imageProvider === 'fal' && activeProject.falApiKey) {
-          url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
-        } else if (activeProject.imageProvider === 'seaart' && activeProject.seaartApiKey) {
-          url = await generateSeaArtImage(fullPrompt, panel.aspectRatio, activeProject.seaartApiKey, initImage, panel.referenceStrength ?? 0.7);
-        } else {
-          console.warn(`No API key configured for provider: ${activeProject.imageProvider}`);
-        }
+        // Use the shared hook to generate
+        const url = await imageGeneration.generateImage(
+          panel.prompt || '',
+          panel.aspectRatio,
+          activeChars,
+          initImage,
+          panel.referenceStrength ?? 0.7
+        );
         
         if (url) {
           const storedRef = await saveImage(panel.id, url);
@@ -835,7 +817,7 @@ function AppContent() {
         )}
         {isGeneratingAll && (
           <button
-            onClick={() => setCancelGeneration(true)}
+            onClick={() => { cancelGenerationRef.current = true; }}
             className="text-xs font-mono text-red-500 hover:text-red-400"
           >
             CANCEL
