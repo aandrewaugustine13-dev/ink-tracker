@@ -77,7 +77,7 @@ const PanelThumbnail: React.FC<{ panel: Panel }> = ({ panel }) => {
     return (
         <img
             src={imageSrc}
-            alt=""
+            alt="Panel thumbnail"
             className="w-5 h-5 rounded border border-ink-700 object-cover flex-shrink-0"
         />
     );
@@ -95,7 +95,10 @@ const PageThumbnails: React.FC<{ panels: Panel[] }> = ({ panels }) => {
                 <PanelThumbnail key={panel.id} panel={panel} />
             ))}
             {remainingCount > 0 && (
-                <span className="text-[9px] text-steel-600 font-mono ml-1">
+                <span 
+                    className="text-[9px] text-steel-600 font-mono ml-1"
+                    aria-label={`${remainingCount} more panels`}
+                >
                     +{remainingCount}
                 </span>
             )}
@@ -668,7 +671,7 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                                         state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
                                                     }`}
                                                 >
-                                                    <div className="flex justify-between items-center">
+                                                    <div className="flex justify-between items-center w-full">
                                                         <span>PAGE {pg.number}</span>
                                                         <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
                                                     </div>
