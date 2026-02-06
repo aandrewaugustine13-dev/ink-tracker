@@ -27,6 +27,8 @@ export interface ParsedPanel {
     visualMarker: VisualMarker;
     aspectRatio: AspectRatio;
     panelModifier?: string;
+    startOffset?: number;  // Character offset in original script text
+    endOffset?: number;    // Character offset where panel ends
 }
 
 export interface ParsedPage {
@@ -370,6 +372,8 @@ export function parseScript(scriptText: string): ParseResult {
         let inCastSection = false;
         let inArtistNotes = false;
         let pendingCharacter: string | null = null;
+        let currentPanelStartOffset = 0;
+        let currentCharOffset = 0;
 
         const saveCurrentPanel = () => {
             if (currentPanelNumber > 0) {
@@ -385,6 +389,8 @@ export function parseScript(scriptText: string): ParseResult {
                         visualMarker,
                         aspectRatio,
                         panelModifier: currentPanelModifier || undefined,
+                        startOffset: currentPanelStartOffset,
+                        endOffset: currentCharOffset,
                     });
                 }
             }
@@ -415,15 +421,20 @@ export function parseScript(scriptText: string): ParseResult {
             if (!line) {
                 pendingCharacter = null;
                 inArtistNotes = false;
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
-            if (line === '---' || line === '***') continue;
+            if (line === '---' || line === '***') {
+                currentCharOffset += rawLine.length + 1; // +1 for newline
+                continue;
+            }
 
             // Check for issue header
             const issueHeaderMatch = line.match(ISSUE_HEADER);
             if (issueHeaderMatch && !issueInfo) {
                 issueInfo = { title: issueHeaderMatch[1].trim() };
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -433,6 +444,7 @@ export function parseScript(scriptText: string): ParseResult {
                 if (!issueInfo) issueInfo = { title: '' };
                 issueInfo.issueNumber = parseInt(issueNumMatch[1], 10);
                 if (issueNumMatch[2]) issueInfo.subtitle = issueNumMatch[2].trim();
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -442,6 +454,7 @@ export function parseScript(scriptText: string): ParseResult {
                 if (writerMatch && issueInfo) {
                     issueInfo.writer = writerMatch[1].trim();
                 }
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -451,6 +464,7 @@ export function parseScript(scriptText: string): ParseResult {
                 if (pageCountMatch && issueInfo) {
                     issueInfo.pageCount = parseInt(pageCountMatch[1], 10);
                 }
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -460,18 +474,21 @@ export function parseScript(scriptText: string): ParseResult {
                 if (timelineMatch && issueInfo) {
                     issueInfo.timeline = timelineMatch[1].trim();
                 }
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
             // Check for cast section
             if (CAST_HEADER.test(line)) {
                 inCastSection = true;
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
             // Check for artist notes section
             if (line.match(/^###\s*ARTIST/i) || line.match(/^###\s*COLORIST/i)) {
                 inArtistNotes = true;
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -487,6 +504,7 @@ export function parseScript(scriptText: string): ParseResult {
                         const existing = characterMap.get(charName)!;
                         existing.description = description;
                     }
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
                 if (line.startsWith('##') || line.startsWith('###')) {
@@ -505,6 +523,7 @@ export function parseScript(scriptText: string): ParseResult {
                 currentPageNumber = parsePageNumber(pageMatch[1]);
                 inCastSection = false;
                 inArtistNotes = false;
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -523,6 +542,7 @@ export function parseScript(scriptText: string): ParseResult {
             if (panelMatch) {
                 saveCurrentPanel();
                 currentPanelNumber = parseInt(panelMatch[1], 10);
+                currentPanelStartOffset = currentCharOffset; // Mark where this panel starts
                 
                 // Handle different capture group positions
                 if (panelMatch.length >= 4 && panelMatch[2] && !panelMatch[2].match(/^\d/)) {
@@ -537,6 +557,7 @@ export function parseScript(scriptText: string): ParseResult {
                 
                 inCastSection = false;
                 inArtistNotes = false;
+                currentCharOffset += rawLine.length + 1; // +1 for newline
                 continue;
             }
 
@@ -546,6 +567,7 @@ export function parseScript(scriptText: string): ParseResult {
                 const artistNote = extractArtistNote(line);
                 if (artistNote) {
                     currentPanelArtistNotes.push(artistNote);
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -553,6 +575,7 @@ export function parseScript(scriptText: string): ParseResult {
                 const caption = extractCaption(line);
                 if (caption) {
                     currentPanelBubbles.push({ type: 'caption', text: caption });
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -560,6 +583,7 @@ export function parseScript(scriptText: string): ParseResult {
                 const sfx = extractSFX(line);
                 if (sfx) {
                     currentPanelBubbles.push({ type: 'sfx', text: sfx });
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -567,6 +591,7 @@ export function parseScript(scriptText: string): ParseResult {
                 const screenText = extractScreenText(line);
                 if (screenText) {
                     currentPanelBubbles.push({ type: 'screen-text', text: screenText.text, modifier: screenText.subtype });
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -586,6 +611,7 @@ export function parseScript(scriptText: string): ParseResult {
                         modifier: dialogue.modifier || undefined,
                     });
                     pendingCharacter = null;
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -603,18 +629,21 @@ export function parseScript(scriptText: string): ParseResult {
                         text,
                         character: pendingCharacter,
                     });
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
                 // Check for standalone character name (dialogue on next line)
                 if (/^[A-Z][A-Z\s\-']{1,25}$/.test(line) && !line.includes(':')) {
                     pendingCharacter = line.trim().toUpperCase();
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
                 // Check for inset pattern
                 if (INSET_PATTERN.test(line)) {
                     currentPanelDescription += ' ' + line;
+                    currentCharOffset += rawLine.length + 1; // +1 for newline
                     continue;
                 }
 
@@ -638,6 +667,9 @@ export function parseScript(scriptText: string): ParseResult {
                     currentPageNotes += line + '\n';
                 }
             }
+            
+            // Track character offset for every line
+            currentCharOffset += rawLine.length + 1; // +1 for newline
         }
 
         // Save the final page
