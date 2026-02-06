@@ -55,6 +55,7 @@ import { generateLeonardoImage } from './services/leonardoService';
 import { generateGrokImage } from './services/grokService';
 import { generateFluxImage as generateFalFlux } from './services/falFluxService';
 import { generateSeaArtImage } from './services/seaartService';
+import { generateOpenAIImage } from './services/openaiService';
 
 /**
  * Helper to build a full appearance description for image generation
@@ -696,6 +697,8 @@ function AppContent() {
             url = await generateFalFlux(fullPrompt, panel.aspectRatio, activeProject.falApiKey, activeProject.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
           } else if (activeProject.imageProvider === 'seaart' && activeProject.seaartApiKey) {
             url = await generateSeaArtImage(fullPrompt, panel.aspectRatio, activeProject.seaartApiKey, initImage, panel.referenceStrength ?? 0.7);
+          } else if (activeProject.imageProvider === 'openai' && activeProject.openaiApiKey) {
+            url = await generateOpenAIImage(fullPrompt, panel.aspectRatio, activeProject.openaiApiKey, initImage, panel.referenceStrength ?? 0.7);
           } else {
             console.warn(`No API key configured for provider: ${activeProject.imageProvider}`);
           }

@@ -90,7 +90,7 @@ export interface Issue {
     scriptText?: string; // Original imported script for reference
 }
 
-export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart';
+export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart' | 'openai';
 
 export interface Project {
     id: string;
@@ -104,6 +104,7 @@ export interface Project {
     grokApiKey?: string;
     falApiKey?: string;
     seaartApiKey?: string;
+    openaiApiKey?: string;
     customStylePrompt?: string;
     fluxModel?: string;
     issues: Issue[];

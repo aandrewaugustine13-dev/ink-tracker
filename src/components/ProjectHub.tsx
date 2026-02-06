@@ -18,6 +18,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
     const [localGrokKey, setLocalGrokKey] = useState<string>('');
     const [localFalKey, setLocalFalKey] = useState<string>('');
     const [localSeaArtKey, setLocalSeaArtKey] = useState<string>('');
+    const [localOpenAIKey, setLocalOpenAIKey] = useState<string>('');
 
     useEffect(() => {
         if (editingId) {
@@ -27,6 +28,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
             setLocalGrokKey(proj?.grokApiKey || '');
             setLocalFalKey(proj?.falApiKey || '');
             setLocalSeaArtKey(proj?.seaartApiKey || '');
+            setLocalOpenAIKey(proj?.openaiApiKey || '');
         }
     }, [editingId, state.projects]);
 
@@ -85,6 +87,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 proj.imageProvider === 'grok' ? 'bg-gray-600/20 text-gray-400 border-gray-600/50' :
                 proj.imageProvider === 'fal' ? 'bg-ember-500/20 text-ember-400 border-ember-500/50' :
                 proj.imageProvider === 'seaart' ? 'bg-pink-600/20 text-pink-400 border-pink-600/50' :
+                proj.imageProvider === 'openai' ? 'bg-green-600/20 text-green-400 border-green-600/50' :
                 'bg-ink-800 text-steel-600 border-ink-700'
             }`}>
             {proj.imageProvider}
@@ -130,12 +133,20 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 FAL
                 </button>
                 </div>
+                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
                 <button
                 onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'seaart' } })}
-                className={`w-full text-[10px] font-mono py-2 rounded-lg border transition-all mt-1.5 ${proj.imageProvider === 'seaart' ? 'bg-pink-600 text-white border-pink-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-pink-600/50'}`}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'seaart' ? 'bg-pink-600 text-white border-pink-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-pink-600/50'}`}
                 >
                 SEAART
                 </button>
+                <button
+                onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: proj.id, updates: { imageProvider: 'openai' } })}
+                className={`text-[10px] font-mono py-2 rounded-lg border transition-all ${proj.imageProvider === 'openai' ? 'bg-green-600 text-white border-green-500 font-bold' : 'bg-ink-900 text-steel-500 border-ink-700 hover:border-green-600/50'}`}
+                >
+                OPENAI
+                </button>
+                </div>
                 </div>
 
                 {/* API Key input for selected provider */}
@@ -145,7 +156,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                  proj.imageProvider === 'leonardo' ? 'Leonardo' :
                  proj.imageProvider === 'grok' ? 'Grok (xAI)' :
                  proj.imageProvider === 'fal' ? 'FAL' :
-                 proj.imageProvider === 'seaart' ? 'SeaArt' : ''} API Key
+                 proj.imageProvider === 'seaart' ? 'SeaArt' :
+                 proj.imageProvider === 'openai' ? 'OpenAI' : ''} API Key
                 </label>
                 <div className="flex gap-2">
                 <input
@@ -156,7 +168,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                     proj.imageProvider === 'leonardo' ? localLeonardoKey :
                     proj.imageProvider === 'grok' ? localGrokKey :
                     proj.imageProvider === 'fal' ? localFalKey :
-                    proj.imageProvider === 'seaart' ? localSeaArtKey : ''
+                    proj.imageProvider === 'seaart' ? localSeaArtKey :
+                    proj.imageProvider === 'openai' ? localOpenAIKey : ''
                 }
                 onChange={e => {
                     if (proj.imageProvider === 'gemini') setLocalGeminiKey(e.target.value);
@@ -164,6 +177,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                     else if (proj.imageProvider === 'grok') setLocalGrokKey(e.target.value);
                     else if (proj.imageProvider === 'fal') setLocalFalKey(e.target.value);
                     else if (proj.imageProvider === 'seaart') setLocalSeaArtKey(e.target.value);
+                    else if (proj.imageProvider === 'openai') setLocalOpenAIKey(e.target.value);
                 }}
                 className="flex-1 bg-ink-900 border border-ink-700 rounded-lg px-3 py-2 text-xs text-steel-300 font-mono outline-none focus:border-ember-500"
                 />
@@ -184,6 +198,9 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                     } else if (proj.imageProvider === 'seaart' && localSeaArtKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: proj.id, apiKey: localSeaArtKey.trim() });
                         alert('SeaArt Key saved!');
+                    } else if (proj.imageProvider === 'openai' && localOpenAIKey.trim()) {
+                        dispatch({ type: 'UPDATE_PROJECT_OPENAI_KEY', projectId: proj.id, apiKey: localOpenAIKey.trim() });
+                        alert('OpenAI Key saved!');
                     }
                 }}
                 className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-lg uppercase text-[9px] transition-colors"
@@ -235,6 +252,15 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                         className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
                     >
                         Get key from seaart.ai/api
+                    </a>
+                ) : proj.imageProvider === 'openai' ? (
+                    <a 
+                        href="https://platform.openai.com/api-keys" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[8px] text-steel-600 italic hover:underline hover:text-steel-400 cursor-pointer transition-colors mt-1 block"
+                    >
+                        Get key from platform.openai.com
                     </a>
                 ) : null}
                 </div>

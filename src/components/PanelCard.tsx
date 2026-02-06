@@ -14,6 +14,7 @@ import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
 import { generateFluxImage as generateFalFlux } from '../services/falFluxService';
 import { generateSeaArtImage } from '../services/seaartService';
+import { generateOpenAIImage } from '../services/openaiService';
 
 // Helper to get a short appearance summary for a character
 function getAppearanceSummary(char: Character): string {
@@ -264,6 +265,8 @@ const PanelCard: React.FC<PanelCardProps> = ({
                 url = await generateFalFlux(fullPrompt, panel.aspectRatio, project.falApiKey, project.fluxModel || 'fal-ai/flux-pro', initImage, panel.referenceStrength ?? 0.7);
             } else if (project.imageProvider === 'seaart' && project.seaartApiKey) {
                 url = await generateSeaArtImage(fullPrompt, panel.aspectRatio, project.seaartApiKey, initImage, panel.referenceStrength ?? 0.7);
+            } else if (project.imageProvider === 'openai' && project.openaiApiKey) {
+                url = await generateOpenAIImage(fullPrompt, panel.aspectRatio, project.openaiApiKey, initImage, panel.referenceStrength ?? 0.7);
             } else {
                 throw new Error(`No API key configured for ${project.imageProvider}. Please add your API key in the sidebar.`);
             }
