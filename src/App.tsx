@@ -640,7 +640,8 @@ function AppContent() {
           pageNumber: parsedPage.pageNumber,
           panelNumber: parsedPanel.panelNumber,
           startOffset: parsedPanel.startOffset,
-          endOffset: parsedPanel.endOffset
+          endOffset: parsedPanel.endOffset,
+          visualMarker: parsedPanel.visualMarker
         } : undefined
       })),
     }));

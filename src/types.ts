@@ -73,6 +73,7 @@ export interface Panel {
         panelNumber: number;
         startOffset: number;  // Character offset in script text where this panel's description starts
         endOffset: number;    // Character offset where description ends
+        visualMarker?: string; // Visual marker type (echo, hitch, overflow, etc.)
     };
 }
 

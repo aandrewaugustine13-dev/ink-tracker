@@ -90,13 +90,11 @@ export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionC
         for (const page of issue.pages) {
             for (const panel of page.panels) {
                 if (panel.scriptRef) {
-                    // Find the visual marker for this panel
-                    // This would need to be stored in the panel or derived from the description
                     sections.push({
                         start: panel.scriptRef.startOffset,
                         end: panel.scriptRef.endOffset,
                         panelId: panel.id,
-                        visualMarker: 'standard', // TODO: get from panel
+                        visualMarker: (panel.scriptRef.visualMarker as VisualMarker) || 'standard',
                         text: scriptText.substring(panel.scriptRef.startOffset, panel.scriptRef.endOffset)
                     });
                 }
