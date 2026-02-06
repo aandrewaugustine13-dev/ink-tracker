@@ -27,6 +27,8 @@ export interface ParsedPanel {
     visualMarker: VisualMarker;
     aspectRatio: AspectRatio;
     panelModifier?: string;
+    startOffset?: number;  // Character offset in original script text
+    endOffset?: number;    // Character offset where panel ends
 }
 
 export interface ParsedPage {
@@ -370,6 +372,8 @@ export function parseScript(scriptText: string): ParseResult {
         let inCastSection = false;
         let inArtistNotes = false;
         let pendingCharacter: string | null = null;
+        let currentPanelStartOffset = 0;
+        let currentCharOffset = 0;
 
         const saveCurrentPanel = () => {
             if (currentPanelNumber > 0) {
@@ -385,6 +389,8 @@ export function parseScript(scriptText: string): ParseResult {
                         visualMarker,
                         aspectRatio,
                         panelModifier: currentPanelModifier || undefined,
+                        startOffset: currentPanelStartOffset,
+                        endOffset: currentCharOffset,
                     });
                 }
             }
@@ -418,7 +424,9 @@ export function parseScript(scriptText: string): ParseResult {
                 continue;
             }
 
-            if (line === '---' || line === '***') continue;
+            if (line === '---' || line === '***') {
+                continue;
+            }
 
             // Check for issue header
             const issueHeaderMatch = line.match(ISSUE_HEADER);
@@ -523,6 +531,7 @@ export function parseScript(scriptText: string): ParseResult {
             if (panelMatch) {
                 saveCurrentPanel();
                 currentPanelNumber = parseInt(panelMatch[1], 10);
+                currentPanelStartOffset = currentCharOffset; // Mark where this panel starts
                 
                 // Handle different capture group positions
                 if (panelMatch.length >= 4 && panelMatch[2] && !panelMatch[2].match(/^\d/)) {
@@ -638,6 +647,9 @@ export function parseScript(scriptText: string): ParseResult {
                     currentPageNotes += line + '\n';
                 }
             }
+            
+            // Track character offset for every line
+            currentCharOffset += rawLine.length + 1; // +1 for newline
         }
 
         // Save the final page
