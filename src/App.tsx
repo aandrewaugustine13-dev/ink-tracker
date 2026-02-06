@@ -1434,8 +1434,8 @@ function AppContent() {
                     key={idx}
                     className={`relative aspect-square rounded overflow-hidden ${
                       result.success 
-                        ? showGutters ? 'border-2 border-green-500' : 'border-2 border-green-500'
-                        : showGutters ? 'border-2 border-red-500' : 'border-2 border-red-500'
+                        ? 'border-2 border-green-500'
+                        : 'border-2 border-red-500'
                     }`}
                   >
                     {result.imageUrl ? (
