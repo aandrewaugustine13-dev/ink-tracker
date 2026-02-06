@@ -44,6 +44,7 @@ import ProjectHub from './components/ProjectHub';
 import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
 import TextOverlay from './components/TextOverlay';
+import { SplitView } from './components/SplitView';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
@@ -195,6 +196,7 @@ function AppContent() {
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
   const [showCharacterBank, setShowCharacterBank] = useState(false);
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
+  const [showSplitView, setShowSplitView] = useState(false);
   
   // Generate All state
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
@@ -633,6 +635,13 @@ function AppContent() {
           x: 10, y: 10 + (idx * 15), width: 30, height: 10, fontSize: 18, color: '#000000', rotation: 0, tailX: 15, tailY: 10 + (idx * 15) + 15,
           tailStyle: bubble.type === 'thought' ? 'cloud' : (bubble.type === 'caption' ? 'none' : 'pointy')
         })),
+        // Store script reference for bidirectional linking
+        scriptRef: parsedPanel.startOffset !== undefined && parsedPanel.endOffset !== undefined ? {
+          pageNumber: parsedPage.pageNumber,
+          panelNumber: parsedPanel.panelNumber,
+          startOffset: parsedPanel.startOffset,
+          endOffset: parsedPanel.endOffset
+        } : undefined
       })),
     }));
     const newCharacters: Character[] = result.characters.map(c => ({
@@ -931,6 +940,25 @@ function AppContent() {
     >
       <BookOpen size={18} />
     </button>
+    
+    {/* Split View Toggle - Only show if script exists */}
+    {activeIssue?.scriptText && (
+      <button
+        onClick={() => setShowSplitView(!showSplitView)}
+        className={`p-2 rounded-lg transition-all ${
+          showSplitView
+            ? showGutters 
+              ? 'bg-ember-500 text-white' 
+              : 'bg-ember-500 text-ink-950'
+            : showGutters 
+              ? 'hover:bg-gray-200 text-gray-600' 
+              : 'hover:bg-ink-800 text-steel-400 hover:text-steel-200'
+        }`}
+        title="Toggle Script Split View"
+      >
+        <Columns size={18} />
+      </button>
+    )}
     </div>
 
     {/* Right Side: Action Buttons - Wrapped */}
@@ -1086,47 +1114,101 @@ function AppContent() {
     {activeTab === 'canvas' ? (
       <>
         <div className={`flex-1 ${zoomEnabled ? 'overflow-hidden' : 'overflow-scroll'}`}>
-        <TransformComponent 
-        wrapperClass="w-full h-full" 
-        contentClass=""
-        >
-        {showSpreadView ? (
-          <SpreadCanvas
-          activePage={activePage}
-          activeProject={activeProject}
-          activeIssue={activeIssue}
-          dispatch={dispatch}
-          sensors={sensors}
-          handleDragStart={handleDragStart}
-          handleDragEnd={handleDragEnd}
-          activeId={activeId}
-          activePanelForOverlay={activePanelForOverlay}
-          showGutters={showGutters}
-          zoomEnabled={zoomEnabled}
-          selectedPanelId={selectedPanelId}
-          setSelectedPanelId={setSelectedPanelId}
-          copiedPanelSettings={copiedPanelSettings}
-          setCopiedPanelSettings={setCopiedPanelSettings}
-          />
+        {showSplitView && activeIssue ? (
+          <SplitView
+            issue={activeIssue}
+            activePanelId={selectedPanelId}
+            onPanelClick={(panelId) => setSelectedPanelId(panelId)}
+            onScriptSectionClick={(panelId) => setSelectedPanelId(panelId)}
+            onSyncPrompt={(panelId, newPrompt) => {
+              dispatch({ type: 'UPDATE_PANEL', panelId, updates: { prompt: newPrompt } });
+            }}
+          >
+            <TransformComponent 
+            wrapperClass="w-full h-full" 
+            contentClass=""
+            >
+            {showSpreadView ? (
+              <SpreadCanvas
+              activePage={activePage}
+              activeProject={activeProject}
+              activeIssue={activeIssue}
+              dispatch={dispatch}
+              sensors={sensors}
+              handleDragStart={handleDragStart}
+              handleDragEnd={handleDragEnd}
+              activeId={activeId}
+              activePanelForOverlay={activePanelForOverlay}
+              showGutters={showGutters}
+              zoomEnabled={zoomEnabled}
+              selectedPanelId={selectedPanelId}
+              setSelectedPanelId={setSelectedPanelId}
+              copiedPanelSettings={copiedPanelSettings}
+              setCopiedPanelSettings={setCopiedPanelSettings}
+              />
+            ) : (
+              <ZoomableCanvas
+              activePage={activePage}
+              activeProject={activeProject}
+              dispatch={dispatch}
+              sensors={sensors}
+              handleDragStart={handleDragStart}
+              handleDragEnd={handleDragEnd}
+              activeId={activeId}
+              activePanelForOverlay={activePanelForOverlay}
+              showGutters={showGutters}
+              zoomEnabled={zoomEnabled}
+              selectedPanelId={selectedPanelId}
+              setSelectedPanelId={setSelectedPanelId}
+              copiedPanelSettings={copiedPanelSettings}
+              setCopiedPanelSettings={setCopiedPanelSettings}
+              />
+            )}
+            </TransformComponent>
+          </SplitView>
         ) : (
-          <ZoomableCanvas
-          activePage={activePage}
-          activeProject={activeProject}
-          dispatch={dispatch}
-          sensors={sensors}
-          handleDragStart={handleDragStart}
-          handleDragEnd={handleDragEnd}
-          activeId={activeId}
-          activePanelForOverlay={activePanelForOverlay}
-          showGutters={showGutters}
-          zoomEnabled={zoomEnabled}
-          selectedPanelId={selectedPanelId}
-          setSelectedPanelId={setSelectedPanelId}
-          copiedPanelSettings={copiedPanelSettings}
-          setCopiedPanelSettings={setCopiedPanelSettings}
-          />
+          <TransformComponent 
+          wrapperClass="w-full h-full" 
+          contentClass=""
+          >
+          {showSpreadView ? (
+            <SpreadCanvas
+            activePage={activePage}
+            activeProject={activeProject}
+            activeIssue={activeIssue}
+            dispatch={dispatch}
+            sensors={sensors}
+            handleDragStart={handleDragStart}
+            handleDragEnd={handleDragEnd}
+            activeId={activeId}
+            activePanelForOverlay={activePanelForOverlay}
+            showGutters={showGutters}
+            zoomEnabled={zoomEnabled}
+            selectedPanelId={selectedPanelId}
+            setSelectedPanelId={setSelectedPanelId}
+            copiedPanelSettings={copiedPanelSettings}
+            setCopiedPanelSettings={setCopiedPanelSettings}
+            />
+          ) : (
+            <ZoomableCanvas
+            activePage={activePage}
+            activeProject={activeProject}
+            dispatch={dispatch}
+            sensors={sensors}
+            handleDragStart={handleDragStart}
+            handleDragEnd={handleDragEnd}
+            activeId={activeId}
+            activePanelForOverlay={activePanelForOverlay}
+            showGutters={showGutters}
+            zoomEnabled={zoomEnabled}
+            selectedPanelId={selectedPanelId}
+            setSelectedPanelId={setSelectedPanelId}
+            copiedPanelSettings={copiedPanelSettings}
+            setCopiedPanelSettings={setCopiedPanelSettings}
+            />
+          )}
+          </TransformComponent>
         )}
-        </TransformComponent>
         </div>
 
         <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 border border-white/10 rounded-full px-8 py-4 flex items-center gap-10 shadow-2xl z-[400] transition-all ${showGutters ? 'bg-white border-black text-black' : 'bg-ink-900/95 backdrop-blur-2xl text-steel-400'}`}>
