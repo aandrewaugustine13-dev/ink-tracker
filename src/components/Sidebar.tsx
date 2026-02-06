@@ -10,6 +10,7 @@ import { generateSeaArtImage } from '../services/seaartService';
 import { saveImage } from '../services/imageStorage';
 import { useAuth } from '../context/AuthContext';
 import { isSupabaseConfigured } from '../services/supabase';
+import { PageThumbnails } from './PageThumbnails';
 
 interface SidebarProps {
     state: AppState;
@@ -576,16 +577,20 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                                     {isActive && (
                                         <div className="px-2 py-2 border-t border-ember-500/10 space-y-1 animate-fade-in">
                                             {iss.pages.map(pg => (
-                                                <button
-                                                    key={pg.id}
-                                                    onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
-                                                    className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
-                                                        state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
-                                                    }`}
-                                                >
-                                                    <span>PAGE {pg.number}</span>
-                                                    <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
-                                                </button>
+                                                <div key={pg.id}>
+                                                    <button
+                                                        onClick={() => dispatch({ type: 'SET_ACTIVE_PAGE', id: pg.id })}
+                                                        className={`w-full text-left px-3 py-1.5 rounded text-[11px] font-mono transition-all flex justify-between items-center ${
+                                                            state.activePageId === pg.id ? 'bg-ember-500 text-ink-950 font-bold' : 'text-steel-500 hover:bg-ink-700'
+                                                        }`}
+                                                    >
+                                                        <span>PAGE {pg.number}</span>
+                                                        <span className="opacity-40 text-[9px]">{pg.panels.length}F</span>
+                                                    </button>
+                                                    <div className="px-3">
+                                                        <PageThumbnails panels={pg.panels} />
+                                                    </div>
+                                                </div>
                                             ))}
                                             <button
                                                 onClick={() => dispatch({ type: 'ADD_PAGE', issueId: iss.id })}
