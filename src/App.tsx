@@ -23,7 +23,10 @@ import {
   Issue,
   Character,
   AspectRatio,
-  Project
+  Project,
+  Panel,
+  TextElement,
+  TextElementType
 } from './types';
 import { historyReducer, createInitialHistoryState, canUndo, canRedo } from './state/reducer';
 import { createInitialState, normalizeProjects } from './state/initialState';
@@ -40,6 +43,7 @@ import ZoomControls from './components/ZoomControls';
 import ProjectHub from './components/ProjectHub';
 import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
+import TextOverlay from './components/TextOverlay';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
@@ -179,6 +183,14 @@ function AppContent() {
   const [showScriptPanel, setShowScriptPanel] = useState(false);
   const [showReadThrough, setShowReadThrough] = useState(false);
   const [readThroughIndex, setReadThroughIndex] = useState(0);
+  
+  // Enhanced presentation mode state
+  const [showPageInterstitial, setShowPageInterstitial] = useState(false);
+  const [currentPageNumber, setCurrentPageNumber] = useState(1);
+  const [autoAdvance, setAutoAdvance] = useState(false);
+  const [autoAdvanceDelay, setAutoAdvanceDelay] = useState(3);
+  const [lastMouseMove, setLastMouseMove] = useState(Date.now());
+  const [showControls, setShowControls] = useState(true);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [copiedPanelSettings, setCopiedPanelSettings] = useState<{ aspectRatio: AspectRatio; characterIds: string[] } | null>(null);
   const [showCharacterBank, setShowCharacterBank] = useState(false);
@@ -196,6 +208,50 @@ function AppContent() {
   
   // Use the shared image generation hook
   const imageGeneration = activeProject ? useImageGeneration(activeProject) : null;
+
+  // Helper functions for enhanced presentation mode
+  const getAllPanelsFromIssue = (issue: Issue) => {
+    const panels: Array<{ panel: Panel; pageNumber: number }> = [];
+    issue.pages
+      .sort((a, b) => a.number - b.number)
+      .forEach(page => {
+        page.panels.forEach(panel => {
+          panels.push({ panel, pageNumber: page.number });
+        });
+      });
+    return panels;
+  };
+
+  const navigateToNextPanel = () => {
+    if (!activeIssue) return;
+    const allPanels = getAllPanelsFromIssue(activeIssue);
+    const nextIndex = readThroughIndex + 1;
+    
+    if (nextIndex < allPanels.length) {
+      const currentPageNum = allPanels[readThroughIndex]?.pageNumber;
+      const nextPageNum = allPanels[nextIndex].pageNumber;
+      
+      // Check if we're crossing a page boundary
+      if (currentPageNum !== nextPageNum && readThroughIndex > 0) {
+        setShowPageInterstitial(true);
+        setCurrentPageNumber(nextPageNum);
+        setTimeout(() => {
+          setShowPageInterstitial(false);
+          setReadThroughIndex(nextIndex);
+        }, 700); // 200ms fade in + 500ms hold + fade out handled by transition
+      } else {
+        setReadThroughIndex(nextIndex);
+      }
+    }
+  };
+
+  const navigateToPreviousPanel = () => {
+    if (!activeIssue) return;
+    const prevIndex = readThroughIndex - 1;
+    if (prevIndex >= 0) {
+      setReadThroughIndex(prevIndex);
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -253,24 +309,64 @@ function AppContent() {
         }
       }
       
-      // Read-through mode navigation
-      if (showReadThrough && activePage) {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      // Read-through mode navigation - now works across all pages
+      if (showReadThrough && activeIssue) {
+        const allPanels = getAllPanelsFromIssue(activeIssue);
+        if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          setReadThroughIndex(i => Math.max(0, i - 1));
+          navigateToPreviousPanel();
         }
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
           e.preventDefault();
-          setReadThroughIndex(i => Math.min(activePage.panels.length - 1, i + 1));
+          navigateToNextPanel();
         }
         if (e.key === 'Escape') {
           setShowReadThrough(false);
+          setAutoAdvance(false);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stateWithHistory, activePage, selectedPanelId, showReadThrough]);
+  }, [stateWithHistory, activePage, selectedPanelId, showReadThrough, readThroughIndex, activeIssue]);
+
+  // Auto-advance timer for presentation mode
+  useEffect(() => {
+    if (!showReadThrough || !autoAdvance || showPageInterstitial) return;
+    
+    const timer = setTimeout(() => {
+      navigateToNextPanel();
+    }, autoAdvanceDelay * 1000);
+    
+    return () => clearTimeout(timer);
+  }, [showReadThrough, autoAdvance, readThroughIndex, autoAdvanceDelay, showPageInterstitial]);
+
+  // Mouse move detection for control bar auto-hide
+  useEffect(() => {
+    if (!showReadThrough) return;
+    
+    const handleMouseMove = () => {
+      setLastMouseMove(Date.now());
+      setShowControls(true);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [showReadThrough]);
+
+  // Auto-hide controls after 2 seconds
+  useEffect(() => {
+    if (!showReadThrough || !showControls) return;
+    
+    const timer = setTimeout(() => {
+      const timeSinceMove = Date.now() - lastMouseMove;
+      if (timeSinceMove >= 2000) {
+        setShowControls(false);
+      }
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [showReadThrough, lastMouseMove, showControls]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -966,10 +1062,16 @@ function AppContent() {
     </button>
     {/* Read-through Mode */}
     <button
-      onClick={() => { setShowReadThrough(true); setReadThroughIndex(0); }}
-      disabled={!activePage?.panels.length}
+      onClick={() => { 
+        setShowReadThrough(true); 
+        setReadThroughIndex(0); 
+        setShowControls(true); 
+        setLastMouseMove(Date.now());
+        setAutoAdvance(false);
+      }}
+      disabled={!activeIssue?.pages.some(p => p.panels.length > 0)}
       className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg disabled:opacity-30 ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
-      title="Read-through mode (slideshow)"
+      title="Cinematic presentation mode"
     >
       <Play size={16} />
       PRESENT
@@ -1114,59 +1216,128 @@ function AppContent() {
       </div>
     )}
 
-    {/* Read-through / Presentation Mode */}
-    {showReadThrough && activePage && activePage.panels.length > 0 && (
-      <div className="fixed inset-0 bg-black z-[600] flex items-center justify-center">
+    {/* Enhanced Cinematic Presentation Mode */}
+    {showReadThrough && activeIssue && activeIssue.pages.some(p => p.panels.length > 0) && (
+      <div className="fixed inset-0 bg-ink-950 z-[600] flex items-center justify-center">
+        {/* Exit button (always visible) */}
         <button 
-          onClick={() => setShowReadThrough(false)} 
-          className="absolute top-6 right-6 p-3 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors"
-          title="Exit read-through (Escape)"
+          onClick={() => { setShowReadThrough(false); setAutoAdvance(false); }} 
+          className="absolute top-6 right-6 p-3 bg-ink-900/80 hover:bg-ink-800 rounded-full text-steel-300 transition-colors z-[700] backdrop-blur-sm"
+          title="Exit presentation (Escape)"
         >
           <X size={24} />
         </button>
-        
-        <button 
-          onClick={() => setReadThroughIndex(i => Math.max(0, i - 1))}
-          disabled={readThroughIndex === 0}
-          className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors disabled:opacity-30"
-          title="Previous (Arrow Left)"
-        >
-          <ChevronLeft size={32} />
-        </button>
-        
-        <button 
-          onClick={() => setReadThroughIndex(i => Math.min(activePage.panels.length - 1, i + 1))}
-          disabled={readThroughIndex >= activePage.panels.length - 1}
-          className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-ink-900 hover:bg-ink-800 rounded-full text-steel-300 transition-colors disabled:opacity-30"
-          title="Next (Arrow Right)"
-        >
-          <ChevronRight size={32} />
-        </button>
-        
-        <div className="max-w-[80vw] max-h-[80vh] flex flex-col items-center">
-          {(() => {
-            const panel = activePage.panels[readThroughIndex];
-            return panel ? (
-              <>
-                <ReadThroughPanel panelId={panel.id} imageUrl={panel.imageUrl} />
-                <div className="mt-6 text-center">
-                  <p className="font-mono text-steel-400 text-sm mb-2">Panel {readThroughIndex + 1} of {activePage.panels.length}</p>
-                  {panel.prompt && <p className="text-steel-500 text-xs max-w-[600px]">{panel.prompt}</p>}
+
+        {/* Page interstitial */}
+        {showPageInterstitial && (
+          <div className="absolute inset-0 flex items-center justify-center z-[650] bg-ink-950 transition-opacity duration-200">
+            <div className="text-center">
+              <p className="text-steel-200 text-4xl font-display tracking-wider">Page {currentPageNumber}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Main panel display */}
+        {!showPageInterstitial && (() => {
+          const allPanels = getAllPanelsFromIssue(activeIssue);
+          const currentPanelData = allPanels[readThroughIndex];
+          
+          if (!currentPanelData) return null;
+          
+          const { panel, pageNumber } = currentPanelData;
+          const totalPanels = allPanels.length;
+          const progressPercent = (readThroughIndex / Math.max(1, totalPanels - 1)) * 100;
+
+          return (
+            <>
+              {/* Panel with text overlays */}
+              <div 
+                className="relative max-w-[85vw] max-h-[85vh] flex items-center justify-center cursor-pointer transition-opacity duration-500"
+                onClick={navigateToNextPanel}
+              >
+                <div className="relative">
+                  <ReadThroughPanel 
+                    panelId={panel.id} 
+                    imageUrl={panel.imageUrl} 
+                    prompt={panel.prompt}
+                  />
+                  
+                  {/* Text element overlays - positioned relative to panel */}
+                  {panel.imageUrl && panel.textElements && panel.textElements.length > 0 && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {panel.textElements.map(textElement => (
+                        <PresentationTextElement key={textElement.id} element={textElement} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </>
-            ) : null;
-          })()}
-        </div>
-        
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-          {activePage.panels.map((_: any, idx: number) => (
-            <button
-              key={idx}
-              onClick={() => setReadThroughIndex(idx)}
-              className={`w-3 h-3 rounded-full transition-all ${idx === readThroughIndex ? 'bg-ember-500 scale-125' : 'bg-ink-700 hover:bg-ink-600'}`}
-            />
-          ))}
-        </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-ink-900 z-[650]">
+                <div 
+                  className="h-full bg-ember-500 transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              {/* Control bar (auto-hide) */}
+              <div 
+                className={`absolute bottom-8 left-1/2 -translate-x-1/2 bg-ink-900/80 backdrop-blur-lg rounded-2xl px-6 py-4 flex items-center gap-6 shadow-2xl border border-ink-700 z-[660] transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              >
+                {/* Previous button */}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigateToPreviousPanel(); }}
+                  disabled={readThroughIndex === 0}
+                  className="p-2 hover:bg-ember-500 hover:text-ink-950 rounded-lg text-steel-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-steel-300"
+                  title="Previous panel"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+
+                {/* Page indicator */}
+                <div className="flex items-center gap-4 font-mono text-xs text-steel-400">
+                  <span className="text-ember-500">Page {pageNumber} of {activeIssue.pages.length}</span>
+                  <span className="text-steel-600">|</span>
+                  <span>Panel {readThroughIndex + 1} of {totalPanels}</span>
+                </div>
+
+                {/* Next button */}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigateToNextPanel(); }}
+                  disabled={readThroughIndex >= totalPanels - 1}
+                  className="p-2 hover:bg-ember-500 hover:text-ink-950 rounded-lg text-steel-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-steel-300"
+                  title="Next panel"
+                >
+                  <ChevronRight size={24} />
+                </button>
+
+                {/* Auto-advance controls */}
+                <div className="flex items-center gap-3 pl-4 border-l border-ink-700">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={autoAdvance}
+                      onChange={(e) => setAutoAdvance(e.target.checked)}
+                      className="w-4 h-4 accent-ember-500"
+                    />
+                    <span className="font-mono text-xs text-steel-400">Auto-advance</span>
+                  </label>
+                  
+                  <input 
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={autoAdvanceDelay}
+                    onChange={(e) => setAutoAdvanceDelay(Math.max(1, Math.min(10, parseInt(e.target.value) || 3)))}
+                    className="w-14 px-2 py-1 bg-ink-800 border border-ink-700 rounded text-steel-300 text-xs font-mono text-center focus:outline-none focus:border-ember-500"
+                  />
+                  <span className="font-mono text-xs text-steel-500">sec</span>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
     )}
     </div>
@@ -1184,7 +1355,7 @@ const App: React.FC = () => {
 export default App;
 
 // Helper component for read-through mode to load images
-function ReadThroughPanel({ panelId, imageUrl }: { panelId: string; imageUrl?: string }) {
+function ReadThroughPanel({ panelId, imageUrl, prompt }: { panelId: string; imageUrl?: string; prompt?: string }) {
   const [image, setImage] = useState<string | null>(null);
   
   useEffect(() => {
@@ -1198,14 +1369,48 @@ function ReadThroughPanel({ panelId, imageUrl }: { panelId: string; imageUrl?: s
   }, [imageUrl]);
   
   if (!image) {
+    // Show prompt text as placeholder
     return (
-      <div className="w-[600px] h-[400px] bg-ink-900 rounded-2xl flex items-center justify-center">
-        <p className="text-steel-600 font-mono text-sm">No image generated</p>
+      <div className="w-[800px] h-[500px] bg-ink-800 rounded-2xl flex items-center justify-center p-8">
+        <p className="text-steel-300 font-mono text-sm text-center max-w-[600px]">
+          {prompt || 'No image generated'}
+        </p>
       </div>
     );
   }
   
-  return <img src={image} alt="" className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl" />;
+  return <img src={image} alt="" className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl" />;
+}
+
+// Component to render text elements in presentation mode (non-interactive)
+function PresentationTextElement({ element }: { element: TextElement }) {
+  const typeClasses: Record<TextElementType, string> = {
+    dialogue: "bubble-dialogue",
+    thought: "bubble-thought",
+    caption: "bubble-caption",
+    phone: "bubble-phone"
+  };
+
+  return (
+    <div
+      className={`absolute ${typeClasses[element.type]} pointer-events-none`}
+      style={{
+        left: `${element.x}%`,
+        top: `${element.y}%`,
+        fontSize: `${element.fontSize}px`,
+        color: element.color,
+        padding: '8px 12px',
+        fontFamily: "'Comic Sans MS', 'Chalkboard', sans-serif",
+        textAlign: 'center',
+        lineHeight: 1.2,
+        minWidth: '40px',
+        maxWidth: '85%',
+        transform: `rotate(${element.rotation || 0}deg)`,
+      }}
+    >
+      {element.content}
+    </div>
+  );
 }
 
 /**
