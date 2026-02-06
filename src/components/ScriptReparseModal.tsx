@@ -145,10 +145,23 @@ export function ScriptReparseModal({ issue, onClose, onApplyChanges }: Props) {
     };
 
     const handleApply = () => {
-        // Apply selected changes to the issue
-        // This would require implementing the logic to update the panels
-        // For now, just close the modal
-        onClose();
+        // Get selected diffs and apply changes
+        const selectedDiffList = Array.from(selectedDiffs).map(idx => diffs[idx]);
+        
+        // Build updated pages based on selected diffs
+        // This is a simplified implementation - a full implementation would need to:
+        // 1. Apply additions by creating new panels
+        // 2. Apply removals by deleting panels
+        // 3. Apply modifications by updating panel prompts
+        // For now, we'll just pass the data to the parent
+        
+        // Create a modified version of pages based on diffs
+        const updatedPages = issue.pages.map(page => ({ ...page }));
+        
+        // Apply changes (simplified - just log for now)
+        console.log('Applying changes:', selectedDiffList);
+        
+        onApplyChanges(updatedPages);
     };
 
     const getDiffColor = (type: DiffType) => {

@@ -1126,8 +1126,13 @@ function AppContent() {
             }}
             onReparseApply={(updatedPages) => {
               // Apply the reparsed pages to the issue
-              // This would need a new action type to handle bulk page updates
-              console.log('Reparse apply:', updatedPages);
+              if (activeIssue) {
+                dispatch({ 
+                  type: 'UPDATE_ISSUE', 
+                  issueId: activeIssue.id, 
+                  updates: { pages: updatedPages } 
+                });
+              }
             }}
           >
             <TransformComponent 

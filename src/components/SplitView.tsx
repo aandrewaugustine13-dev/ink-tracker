@@ -145,7 +145,9 @@ export function SplitView({ issue, activePanelId, onPanelClick, onScriptSectionC
                                 e.stopPropagation();
                                 const editedText = editedSections.get(section.panelId)!;
                                 onSyncPrompt(section.panelId, editedText);
-                                setEditedSections(new Map(editedSections).set(section.panelId, ''));
+                                const newEdited = new Map(editedSections);
+                                newEdited.delete(section.panelId);
+                                setEditedSections(newEdited);
                             }}
                             className="mt-2 px-3 py-1 bg-ember-500 hover:bg-ember-400 text-ink-950 text-xs font-bold rounded transition-all"
                         >
