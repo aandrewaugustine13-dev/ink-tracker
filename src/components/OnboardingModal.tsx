@@ -58,7 +58,6 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
     const [selectedProvider, setSelectedProvider] = useState<ImageProvider | null>(null);
     const [apiKey, setApiKey] = useState('');
     const [selectedPath, setSelectedPath] = useState<'import' | 'manual' | null>(null);
-    const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
 
     // Update issue type based on project type
     useEffect(() => {
@@ -77,8 +76,6 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
     const handleNext = () => {
         if (currentStep === 2) {
             // Create project
-            const projectId = `project-${Date.now()}`;
-            setCreatedProjectId(projectId);
             dispatch({ 
                 type: 'ADD_PROJECT', 
                 title: projectTitle.trim(), 
@@ -87,7 +84,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
             setCurrentStep(3);
         } else if (currentStep === 3) {
             // Set provider and API key if selected
-            if (selectedProvider && createdProjectId) {
+            if (selectedProvider) {
                 const project = state.projects.find(p => p.title === projectTitle.trim());
                 if (project) {
                     dispatch({
@@ -97,12 +94,21 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
                     });
                     
                     if (apiKey) {
-                        const keyAction = `UPDATE_PROJECT_${selectedProvider.toUpperCase()}_KEY` as any;
-                        dispatch({
-                            type: keyAction,
-                            projectId: project.id,
-                            apiKey: apiKey
-                        });
+                        // Use type-safe approach for dynamic action type
+                        const providerUpper = selectedProvider.toUpperCase();
+                        if (providerUpper === 'GEMINI') {
+                            dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: project.id, apiKey });
+                        } else if (providerUpper === 'LEONARDO') {
+                            dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: project.id, apiKey });
+                        } else if (providerUpper === 'GROK') {
+                            dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: project.id, apiKey });
+                        } else if (providerUpper === 'FAL') {
+                            dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: project.id, apiKey });
+                        } else if (providerUpper === 'SEAART') {
+                            dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: project.id, apiKey });
+                        } else if (providerUpper === 'OPENAI') {
+                            dispatch({ type: 'UPDATE_PROJECT_OPENAI_KEY', projectId: project.id, apiKey });
+                        }
                     }
                 }
             }
@@ -135,7 +141,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
     const handleEscKey = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
             if (currentStep > 2 || projectTitle.length > 0) {
-                if (confirm('Exit onboarding? Your progress will not be saved.')) {
+                // Note: Using native confirm for simplicity. Could be replaced with custom modal.
+                const shouldExit = window.confirm('Exit onboarding? Your progress will not be saved.');
+                if (shouldExit) {
                     onClose();
                 }
             } else {
@@ -523,7 +531,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, dispatch, st
                     {currentStep === 1 && <div />}
                     <button
                         onClick={handleNext}
-                        disabled={currentStep === 2 && !canProceedStep2 || currentStep === 4 && !canProceedStep4}
+                        disabled={(currentStep === 2 && !canProceedStep2) || (currentStep === 4 && !canProceedStep4)}
                         className="px-8 py-3 bg-ember-500 hover:bg-ember-400 text-ink-950 font-mono text-xs rounded-lg uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 ml-auto"
                     >
                         {currentStep === 1 ? "Let's Get Started" : 
