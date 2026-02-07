@@ -1492,5 +1492,3 @@ function SpreadCanvas({
     </div>
   );
 }
-
-Screenshot review - Claude
