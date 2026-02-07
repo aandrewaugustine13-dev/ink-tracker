@@ -91,16 +91,11 @@ function parsePageNumber(str: string): number {
 
 // ============= PATTERN DEFINITIONS =============
 
-// FIXED: Simplified PAGE patterns that actually work
+// Flexible PAGE patterns that match any word or number
 const PAGE_PATTERNS = [
-    // Primary pattern: PAGE followed by word or number
-    /^PAGE\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|TWENTY[- ]?NINE|THIRTY|\d+)/i,
-    // Markdown heading format: ### PAGE ONE
-    /^#{1,3}\s*PAGE\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|TWENTY[- ]?NINE|THIRTY|\d+)/i,
-    // Bold format: **PAGE 1**
-    /^\*\*PAGE\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|THIRTEEN|FOURTEEN|FIFTEEN|SIXTEEN|SEVENTEEN|EIGHTEEN|NINETEEN|TWENTY|TWENTY[- ]?ONE|TWENTY[- ]?TWO|TWENTY[- ]?THREE|TWENTY[- ]?FOUR|TWENTY[- ]?FIVE|TWENTY[- ]?SIX|TWENTY[- ]?SEVEN|TWENTY[- ]?EIGHT|TWENTY[- ]?NINE|THIRTY|\d+)\*\*/i,
-    // Short format: PG 1
-    /^PG\s+(\d+)/i,
+    /^#{1,3}\s*PAGE\s+(\w+)/i,       // Matches: ### PAGE 14, ## PAGE FOURTEEN
+    /^\*\*PAGE\s+(\w+)\*\*/i,         // Matches: **PAGE 14**
+    /^(?:PAGE|PG)\s+(\w+)/i,          // Matches: PAGE 14, PG 14
 ];
 
 // FIXED: Simplified PANEL patterns
