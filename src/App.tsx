@@ -215,7 +215,7 @@ function AppContent() {
       }
 
       // Check for '?' key to toggle shortcuts modal
-      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      if (e.key === '?') {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
         return;
