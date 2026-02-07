@@ -663,7 +663,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                                                 e.stopPropagation();
                                                 setShowPromptHistory(!showPromptHistory);
                                             }}
-                                            className={`absolute right-2 bottom-2 p-1 rounded transition-colors ${
+                                            className={`absolute right-2 top-2 p-1 rounded transition-colors ${
                                                 showGutters 
                                                     ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
                                                     : 'bg-ink-800 text-steel-500 hover:bg-ink-700'
