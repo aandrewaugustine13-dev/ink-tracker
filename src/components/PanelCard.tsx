@@ -7,6 +7,7 @@ import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
 import { getImage, saveImage } from '../services/imageStorage';
 import { genId } from '../utils/helpers';
 import TextOverlay from './TextOverlay';
+import { PanelGenerationOverlay } from './GenerationSpinner';
 
 // Import all generation services
 import { generateImage as generateGeminiImage } from '../services/geminiService';
@@ -600,9 +601,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                     )}
                     
                     {isGenerating && (
-                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                            <Loader2 size={32} className="text-ember-500 animate-spin" />
-                        </div>
+                        <PanelGenerationOverlay provider={project.imageProvider} />
                     )}
                 </div>
 
@@ -885,7 +884,13 @@ const PanelCard: React.FC<PanelCardProps> = ({
                     {isGenerating ? (
                         <>
                             <Loader2 size={14} className="animate-spin" />
-                            Generating...
+                            Generating with {project.imageProvider === 'gemini' ? 'Gemini'
+                                : project.imageProvider === 'leonardo' ? 'Leonardo'
+                                : project.imageProvider === 'grok' ? 'Grok'
+                                : project.imageProvider === 'fal' ? 'FAL'
+                                : project.imageProvider === 'seaart' ? 'SeaArt'
+                                : project.imageProvider === 'openai' ? 'OpenAI'
+                                : 'AI'}...
                         </>
                     ) : (
                         <>
