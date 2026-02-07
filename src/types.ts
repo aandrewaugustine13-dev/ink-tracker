@@ -92,6 +92,9 @@ export interface Issue {
 
 export type ImageProvider = 'gemini' | 'leonardo' | 'grok' | 'fal' | 'seaart' | 'openai';
 
+export type PanelFrameStyle = 'opaque-black' | 'opaque-white' | 'translucent';
+export type TextOverlayStyle = 'opaque' | 'semi-transparent' | 'border-only';
+
 export interface Project {
     id: string;
     title: string;
@@ -107,6 +110,8 @@ export interface Project {
     openaiApiKey?: string;
     customStylePrompt?: string;
     fluxModel?: string;
+    panelFrameStyle?: PanelFrameStyle;
+    textOverlayStyle?: TextOverlayStyle;
     issues: Issue[];
     characters: Character[];
 }

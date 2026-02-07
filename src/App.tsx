@@ -1210,6 +1210,7 @@ function AppContent() {
       <PresentMode
         issue={activeIssue}
         onClose={() => setShowReadThrough(false)}
+        textOverlayStyle={activeProject?.textOverlayStyle || 'opaque'}
       />
     )}
     </div>
@@ -1308,6 +1309,8 @@ function ZoomableCanvas({
             });
           }
         }}
+        panelFrameStyle={activeProject?.panelFrameStyle || 'opaque-black'}
+        textOverlayStyle={activeProject?.textOverlayStyle || 'opaque'}
         />
       ))}
       </DndContext>
@@ -1415,6 +1418,8 @@ function SpreadCanvas({
                       });
                     }
                   }}
+                  panelFrameStyle={activeProject?.panelFrameStyle || 'opaque-black'}
+                  textOverlayStyle={activeProject?.textOverlayStyle || 'opaque'}
                 />
               ))}
             </DndContext>

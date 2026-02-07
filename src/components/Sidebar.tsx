@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppState } from '../types';
+import { AppState, PanelFrameStyle, TextOverlayStyle } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
 import { generateImage as generateGeminiImage } from '../services/geminiService';
@@ -903,6 +903,61 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                     </div>
                 )}
             </div>
+
+            {/* Panel & Text Style Settings */}
+            {activeProject && (
+                <div className="p-6 border-t border-ink-700 bg-ink-950 space-y-4">
+                    <h2 className="text-xs font-mono text-steel-500 uppercase tracking-widest px-1">Panel & Text Styles</h2>
+
+                    {/* Panel Frame Style */}
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-mono text-steel-500 uppercase">Panel Frames</label>
+                        <div className="flex rounded-lg overflow-hidden border border-ink-700">
+                            {([
+                                { value: 'opaque-black' as PanelFrameStyle, label: 'Black' },
+                                { value: 'opaque-white' as PanelFrameStyle, label: 'White' },
+                                { value: 'translucent' as PanelFrameStyle, label: 'Translucent' },
+                            ]).map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, updates: { panelFrameStyle: opt.value } })}
+                                    className={`flex-1 text-[9px] font-mono py-2 transition-all ${
+                                        (activeProject.panelFrameStyle || 'opaque-black') === opt.value
+                                            ? 'bg-ember-500 text-ink-950 font-bold'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Text Overlay Style */}
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-mono text-steel-500 uppercase">Text Elements</label>
+                        <div className="flex rounded-lg overflow-hidden border border-ink-700">
+                            {([
+                                { value: 'opaque' as TextOverlayStyle, label: 'Opaque' },
+                                { value: 'semi-transparent' as TextOverlayStyle, label: 'Semi-Trans' },
+                                { value: 'border-only' as TextOverlayStyle, label: 'Border Only' },
+                            ]).map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, updates: { textOverlayStyle: opt.value } })}
+                                    className={`flex-1 text-[9px] font-mono py-2 transition-all ${
+                                        (activeProject.textOverlayStyle || 'opaque') === opt.value
+                                            ? 'bg-ember-500 text-ink-950 font-bold'
+                                            : 'bg-ink-900 text-steel-500 hover:bg-ink-800 hover:text-steel-300'
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </aside>
     );
 };

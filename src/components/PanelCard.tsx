@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { GripVertical, Trash2, ImageIcon, ChevronDown, Sparkles, Loader2, Move, Link2, Unlink, MessageCircle, Cloud, Type, Smartphone, Upload, RefreshCw, Copy, ClipboardPaste, History } from 'lucide-react';
-import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType } from '../types';
+import { Panel, Project, Character, AspectRatio, Page, TextElement, TextElementType, PanelFrameStyle, TextOverlayStyle } from '../types';
 import { Action } from '../state/actions';
 import { ASPECT_CONFIGS, ART_STYLES } from '../constants';
 import { getImage, saveImage } from '../services/imageStorage';
@@ -87,6 +87,8 @@ interface PanelCardProps {
     copiedSettings?: { aspectRatio: AspectRatio; characterIds: string[] } | null;
     onCopySettings?: () => void;
     onPasteSettings?: () => void;
+    panelFrameStyle?: PanelFrameStyle;
+    textOverlayStyle?: TextOverlayStyle;
 }
 
 const MIN_WIDTH = 280;
@@ -109,6 +111,8 @@ const PanelCard: React.FC<PanelCardProps> = ({
     copiedSettings,
     onCopySettings,
     onPasteSettings,
+    panelFrameStyle = 'opaque-black',
+    textOverlayStyle = 'opaque',
 }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showAspectMenu, setShowAspectMenu] = useState(false);
@@ -380,13 +384,23 @@ const PanelCard: React.FC<PanelCardProps> = ({
             }}
             className={`group rounded-xl border transition-all flex flex-col ${
                 showGutters 
-                    ? 'bg-white border-gray-300 shadow-lg hover:shadow-xl' 
-                    : 'bg-ink-900 border-ink-700 shadow-2xl hover:shadow-ember-500/10'
+                    ? panelFrameStyle === 'opaque-white'
+                        ? 'bg-white/90 border-2 border-white shadow-md hover:shadow-lg'
+                        : panelFrameStyle === 'translucent'
+                            ? 'bg-transparent border border-gray-400/60 shadow-sm hover:shadow-md backdrop-blur-sm'
+                            : 'bg-white/90 border-2 border-black shadow-md hover:shadow-lg'
+                    : panelFrameStyle === 'opaque-white'
+                        ? 'bg-white/90 border-2 border-white shadow-md hover:shadow-lg'
+                        : panelFrameStyle === 'translucent'
+                            ? 'bg-transparent border border-gray-400/60 shadow-sm hover:shadow-md backdrop-blur-sm'
+                            : 'bg-ink-900 border-2 border-black shadow-2xl hover:shadow-ember-500/10'
             } ${isDragging ? 'ring-2 ring-ember-500 shadow-2xl' : ''} ${isResizing ? 'cursor-nwse-resize' : ''}`}
         >
             {/* Header with drag handle and controls */}
             <div className={`flex items-center justify-between px-3 py-2 border-b ${
-                showGutters ? 'border-gray-200 bg-gray-50' : 'border-ink-800 bg-ink-950/50'
+                panelFrameStyle === 'translucent'
+                    ? 'border-gray-400/30 bg-white/10 backdrop-blur-sm'
+                    : showGutters ? 'border-gray-200 bg-gray-50' : 'border-ink-800 bg-ink-950/50'
             } rounded-t-xl`}>
                 <div className="flex items-center gap-2">
                     <div 
@@ -507,6 +521,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                                     element={element}
                                     panelId={panel.id}
                                     dispatch={dispatch}
+                                    textOverlayStyle={textOverlayStyle}
                                 />
                             ))}
                             
@@ -854,7 +869,9 @@ const PanelCard: React.FC<PanelCardProps> = ({
 
             {/* Generate button footer */}
             <div className={`px-3 py-2 border-t ${
-                showGutters ? 'border-gray-200 bg-gray-50' : 'border-ink-800 bg-ink-950/50'
+                panelFrameStyle === 'translucent'
+                    ? 'border-gray-400/30 bg-white/10 backdrop-blur-sm'
+                    : showGutters ? 'border-gray-200 bg-gray-50' : 'border-ink-800 bg-ink-950/50'
             } rounded-b-xl`}>
                 <button
                     onClick={handleGenerateImage}

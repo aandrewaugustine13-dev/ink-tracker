@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TextElement, TextElementType } from '../types';
+import { TextElement, TextElementType, TextOverlayStyle } from '../types';
 import { Action } from '../state/actions';
 import { Icons } from '../constants';
 
@@ -7,9 +7,10 @@ interface TextOverlayProps {
     element: TextElement;
     panelId: string;
     dispatch: React.Dispatch<Action>;
+    textOverlayStyle?: TextOverlayStyle;
 }
 
-const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch }) => {
+const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch, textOverlayStyle = 'opaque' }) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState<'bubble' | 'tail' | null>(null);
@@ -109,6 +110,12 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
     const tailBaseX = bubbleCenterX;
     const tailBaseY = bubbleBottomY;
 
+    // Compute tail fill/stroke based on text overlay style
+    const tailFill = textOverlayStyle === 'border-only' ? 'transparent'
+        : textOverlayStyle === 'semi-transparent' ? 'rgba(255,255,255,0.7)'
+        : 'white';
+    const tailStroke = textOverlayStyle === 'semi-transparent' ? '#6b7280' : 'black';
+
     return (
         <>
         <svg 
@@ -120,16 +127,16 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
             tailStyle === 'pointy' ? (
                 <polygon
                 points={`${tailBaseX - 2},${tailBaseY - 0.5} ${tailX},${tailY} ${tailBaseX + 2},${tailBaseY - 0.5}`}
-                fill="white"
-                stroke="black"
+                fill={tailFill}
+                stroke={tailStroke}
                 strokeWidth="0.4"
                 strokeLinejoin="round"
                 />
             ) : (
                 <>
-                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.25} cy={tailBaseY + (tailY - tailBaseY) * 0.25} r="2" fill="white" stroke="black" strokeWidth="0.3" />
-                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.5} cy={tailBaseY + (tailY - tailBaseY) * 0.5} r="1.5" fill="white" stroke="black" strokeWidth="0.25" />
-                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.75} cy={tailBaseY + (tailY - tailBaseY) * 0.75} r="1" fill="white" stroke="black" strokeWidth="0.2" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.25} cy={tailBaseY + (tailY - tailBaseY) * 0.25} r="2" fill={tailFill} stroke={tailStroke} strokeWidth="0.3" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.5} cy={tailBaseY + (tailY - tailBaseY) * 0.5} r="1.5" fill={tailFill} stroke={tailStroke} strokeWidth="0.25" />
+                <circle cx={tailBaseX + (tailX - tailBaseX) * 0.75} cy={tailBaseY + (tailY - tailBaseY) * 0.75} r="1" fill={tailFill} stroke={tailStroke} strokeWidth="0.2" />
                 </>
             )
         )}
@@ -152,7 +159,7 @@ const TextOverlay: React.FC<TextOverlayProps> = ({ element, panelId, dispatch })
         onPointerUp={handlePointerUp}
         onFocusCapture={() => setIsFocused(true)}
         tabIndex={0}
-        className={`comic-overlay-base ${typeClasses[element.type]} ${isFocused ? 'element-selected shadow-[0_0_15px_rgba(59,130,246,0.5)]' : ''}`}
+        className={`comic-overlay-base ${typeClasses[element.type]} ${textOverlayStyle === 'semi-transparent' ? 'text-style-semi-transparent' : textOverlayStyle === 'border-only' ? 'text-style-border-only' : ''} ${isFocused ? 'element-selected shadow-[0_0_15px_rgba(59,130,246,0.5)]' : ''}`}
         style={{
             left: `${element.x}%`,
             top: `${element.y}%`,

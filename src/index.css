@@ -65,6 +65,7 @@
   z-index: 100;
 }
 
+/* ── Text Overlay: Opaque (default) ────────────────────── */
 .bubble-dialogue {
   background: white;
   border: 2px solid black;
@@ -90,6 +91,67 @@
   background: #e0e0e0;
   border: 2px dashed black;
   border-radius: 8px;
+}
+
+/* ── Text Overlay: Semi-Transparent ────────────────────── */
+.text-style-semi-transparent .bubble-dialogue,
+.text-style-semi-transparent.bubble-dialogue {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #6b7280;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(2px);
+}
+
+.text-style-semi-transparent .bubble-thought,
+.text-style-semi-transparent.bubble-thought {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #6b7280;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(2px);
+}
+
+.text-style-semi-transparent .bubble-caption,
+.text-style-semi-transparent.bubble-caption {
+  background: rgba(255, 250, 205, 0.7);
+  border: 1px solid #6b7280;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(2px);
+}
+
+.text-style-semi-transparent .bubble-phone,
+.text-style-semi-transparent.bubble-phone {
+  background: rgba(224, 224, 224, 0.7);
+  border: 1px dashed #6b7280;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Text Overlay: Border Only ─────────────────────────── */
+.text-style-border-only .bubble-dialogue,
+.text-style-border-only.bubble-dialogue {
+  background: transparent;
+  border: 2px solid black;
+  box-shadow: none;
+}
+
+.text-style-border-only .bubble-thought,
+.text-style-border-only.bubble-thought {
+  background: transparent;
+  border: 2px solid black;
+  box-shadow: none;
+}
+
+.text-style-border-only .bubble-caption,
+.text-style-border-only.bubble-caption {
+  background: transparent;
+  border: 2px solid black;
+  box-shadow: none;
+}
+
+.text-style-border-only .bubble-phone,
+.text-style-border-only.bubble-phone {
+  background: transparent;
+  border: 2px dashed black;
+  box-shadow: none;
 }
 
 .element-selected {
