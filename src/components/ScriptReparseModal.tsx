@@ -202,9 +202,25 @@ export function ScriptReparseModal({ issue, onClose, onApplyChanges }: Props) {
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {reparsing ? (
-                        <div className="text-center py-12 text-steel-400">
-                            <div className="animate-spin w-8 h-8 border-2 border-ember-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            Analyzing script changes...
+                        <div className="flex flex-col items-center gap-4 py-12 text-steel-400">
+                            <div className="w-10 h-10 rounded-full border-[3px] border-cyan-500 border-t-transparent animate-spin" />
+                            <p className="text-sm font-mono text-steel-300 font-bold uppercase tracking-widest">
+                                Analyzing Script Changes
+                            </p>
+                            <div className="flex flex-col gap-2 w-56">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-bold">✓</div>
+                                    <span className="text-xs font-mono text-green-400">Re-parsing script...</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-[10px] font-bold animate-pulse">2</div>
+                                    <span className="text-xs font-mono text-cyan-400">Comparing panels...</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-full bg-ink-800 text-steel-600 flex items-center justify-center text-[10px] font-bold">3</div>
+                                    <span className="text-xs font-mono text-steel-600">Building diff view...</span>
+                                </div>
+                            </div>
                         </div>
                     ) : diffs.length === 0 ? (
                         <div className="text-center py-12 text-steel-400">

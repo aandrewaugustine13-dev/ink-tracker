@@ -3,6 +3,7 @@ import { AppState } from '../types';
 import { Action } from '../state/actions';
 import { Icons } from '../constants';
 import NewProjectModal from './NewProjectModal';
+import EmptyState from './EmptyState';
 
 interface ProjectHubProps {
     state: AppState;
@@ -48,7 +49,17 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
         </button>
         </div>
 
-        <div className="p-10 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="p-10 overflow-y-auto">
+        {state.projects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+                <EmptyState
+                    variant="projects"
+                    onAction={() => setShowNewProjectModal(true)}
+                    actionLabel="Create First Project"
+                />
+            </div>
+        ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {state.projects.map(proj => (
             <div
             key={proj.id}
@@ -278,6 +289,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
         </div>
         <span className="font-display text-2xl uppercase tracking-widest text-center">Initialize Sequence</span>
         </button>
+        </div>
+        )}
         </div>
         </div>
         {showNewProjectModal && <NewProjectModal onClose={() => setShowNewProjectModal(false)} dispatch={dispatch} />}

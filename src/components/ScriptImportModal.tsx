@@ -4,6 +4,7 @@ import { parseScreenplay } from '../services/screenplayParser';
 import { parseStagePlay } from '../services/stagePlayParser';
 import { parseTVScript } from '../services/tvSeriesParser';
 import { Project } from '../types';
+import { ScriptParsingProgress } from './GenerationSpinner';
 
 interface Props {
     project: Project;
@@ -28,8 +29,17 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
     const [script, setScript] = useState('');
     const [result, setResult] = useState<ParseResult | null>(null);
     const [editableCharacters, setEditableCharacters] = useState<ParseResult['characters']>([]);
+    const [isParsing, setIsParsing] = useState(false);
+    const [parseStage, setParseStage] = useState<'reading' | 'parsing' | 'extracting-characters' | 'building-pages' | 'done'>('reading');
 
-    const handleParse = () => {
+    const handleParse = async () => {
+        setIsParsing(true);
+        setParseStage('reading');
+
+        // Small delay so user sees progress stages
+        await new Promise(r => setTimeout(r, 300));
+        setParseStage('parsing');
+
         let parsed: ParseResult;
         
         // Select the appropriate parser based on project type
@@ -141,8 +151,16 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                 break;
         }
         
+        await new Promise(r => setTimeout(r, 200));
+        setParseStage('extracting-characters');
+        await new Promise(r => setTimeout(r, 300));
+        setParseStage('building-pages');
+        await new Promise(r => setTimeout(r, 200));
+        setParseStage('done');
+
         setResult(parsed);
         setEditableCharacters(parsed.characters);
+        setIsParsing(false);
     };
 
     const handleImport = () => {
@@ -245,13 +263,24 @@ export function ScriptImportModal({ project, onClose, onImport }: Props) {
                     <div className="w-96 flex flex-col p-6 bg-ink-950/50">
                         <button
                             onClick={handleParse}
-                            disabled={!script.trim()}
-                            className="w-full py-3 mb-6 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold text-xs uppercase tracking-widest rounded-lg disabled:opacity-30 transition-all"
+                            disabled={!script.trim() || isParsing}
+                            className="w-full py-3 mb-6 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold text-xs uppercase tracking-widest rounded-lg disabled:opacity-30 transition-all flex items-center justify-center gap-2"
                         >
-                            Parse Script
+                            {isParsing ? (
+                                <>
+                                    <div className="w-4 h-4 rounded-full border-2 border-ink-950 border-t-transparent animate-spin" />
+                                    Parsing...
+                                </>
+                            ) : (
+                                'Parse Script'
+                            )}
                         </button>
 
-                        {result && (
+                        {isParsing && (
+                            <ScriptParsingProgress stage={parseStage} projectType={project.projectType} />
+                        )}
+
+                        {result && !isParsing && (
                             <div className="flex-1 overflow-y-auto space-y-4">
                                 <div className={`p-4 border rounded-lg ${result.success ? 'bg-green-950/30 border-green-700/50' : 'bg-red-950/30 border-red-700/50'}`}> 
                                     <p className={`font-bold text-sm ${result.success ? 'text-green-400' : 'text-red-400'}`}> 

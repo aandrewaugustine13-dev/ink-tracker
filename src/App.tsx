@@ -43,6 +43,8 @@ import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
 import TextOverlay from './components/TextOverlay';
 import PresentMode from './components/PresentMode';
+import EmptyState from './components/EmptyState';
+import { BatchProgressIndicator, StatusBarIndicator } from './components/GenerationSpinner';
 import { SplitView } from './components/SplitView';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
@@ -867,7 +869,7 @@ function AppContent() {
     className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
     >
     {exporting ? <Icons.Loader /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
-    EXPORT
+    {exporting ? 'EXPORTING...' : 'EXPORT'}
     </button>
     {showExportMenu && (
       <div className={`absolute top-full right-0 mt-2 w-56 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in py-1 ${showGutters ? 'bg-white border border-gray-300' : 'bg-ink-900 border border-ink-700'}`}>
@@ -881,31 +883,32 @@ function AppContent() {
     )}
     </div>
     <button disabled={batching || !activePage?.panels.length} onClick={generatePage} className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}>
-    {batching ? <Icons.Loader /> : <Icons.Magic />}AUTO-INK
+    {batching ? <Icons.Loader /> : <Icons.Magic />}{batching ? `INKING WITH ${(activeProject?.imageProvider || 'AI').toUpperCase()}...` : 'AUTO-INK'}
     </button>
     {/* Generate All Button */}
     {activePage && activePage.panels.some(panel => (panel.prompt?.trim() || panel.characterIds.length > 0) && !panel.imageUrl) && (
       <div className="flex flex-col items-center gap-1">
-        <button
-          onClick={handleGenerateAll}
-          disabled={isGeneratingAll || batching}
-          className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
-        >
-          {isGeneratingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {isGeneratingAll ? `GENERATING ${currentPanel}/${totalPanels}...` : 'GENERATE ALL'}
-        </button>
-        {!isGeneratingAll && (
-          <p className="text-[9px] font-mono text-steel-600 mt-1 max-w-[200px] text-center">
-            Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
-          </p>
-        )}
-        {isGeneratingAll && (
-          <button
-            onClick={() => { cancelGenerationRef.current = true; }}
-            className="text-xs font-mono text-red-500 hover:text-red-400"
-          >
-            CANCEL
-          </button>
+        {isGeneratingAll && activeProject ? (
+          <BatchProgressIndicator
+            provider={activeProject.imageProvider}
+            current={currentPanel}
+            total={totalPanels}
+            onCancel={() => { cancelGenerationRef.current = true; }}
+          />
+        ) : (
+          <>
+            <button
+              onClick={handleGenerateAll}
+              disabled={isGeneratingAll || batching}
+              className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-3 disabled:opacity-20 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+            >
+              <Sparkles className="w-4 h-4" />
+              GENERATE ALL
+            </button>
+            <p className="text-[9px] font-mono text-steel-600 mt-1 max-w-[200px] text-center">
+              Batch generation may consume significant API credits depending on your provider and plan. Review the panel count before proceeding.
+            </p>
+          </>
         )}
       </div>
     )}
@@ -1120,8 +1123,15 @@ function AppContent() {
 
         <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 border border-white/10 rounded-full px-8 py-4 flex items-center gap-10 shadow-2xl z-[400] transition-all ${showGutters ? 'bg-white border-black text-black' : 'bg-ink-900/95 backdrop-blur-2xl text-steel-400'}`}>
         <div className="flex items-center gap-4">
-        <div className={`w-3 h-3 rounded-full ${batching || exporting ? 'bg-ember-500 animate-ping' : 'bg-green-500'}`}></div>
-        <span className="text-[10px] font-mono uppercase tracking-[0.3em] font-bold">{batching ? 'BATCH INKING...' : exporting ? 'EXPORTING...' : 'TERMINAL READY'}</span>
+        <StatusBarIndicator
+          batching={batching}
+          exporting={exporting}
+          isGeneratingAll={isGeneratingAll}
+          provider={activeProject?.imageProvider}
+          currentPanel={currentPanel}
+          totalPanels={totalPanels}
+          showGutters={showGutters}
+        />
         </div>
         <div className={`h-5 w-px ${showGutters ? 'bg-black/20' : 'bg-ink-700'}`}></div>
         <div className="flex gap-8">
@@ -1270,13 +1280,17 @@ function ZoomableCanvas({
       }}
     >
     {!activePage || activePage.panels.length === 0 ? (
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
-      <div className={`w-56 h-56 border-4 border-dashed rounded-[3rem] flex items-center justify-center opacity-40 group hover:opacity-100 transition-opacity ${showGutters ? 'border-gray-400' : 'border-ink-900'}`}>
-      <div className={`scale-[3] transition-colors ${showGutters ? 'text-gray-400 group-hover:text-black' : 'text-ink-800 group-hover:text-ember-500'}`}>
-      <Icons.Plus />
-      </div>
-      </div>
-      <p className={`font-display text-5xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Canvas Sterile</p>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <EmptyState
+          variant="panels"
+          showGutters={showGutters}
+          onAction={() => {
+            if (activePage) {
+              dispatch({ type: 'ADD_PANEL', pageId: activePage.id });
+            }
+          }}
+          actionLabel="Add First Frame"
+        />
       </div>
     ) : (
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
@@ -1384,8 +1398,13 @@ function SpreadCanvas({
           }}
         >
           {page.panels.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
-              <p className={`font-display text-3xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Empty Page</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <EmptyState
+                variant="page-spread"
+                showGutters={showGutters}
+                onAction={() => dispatch({ type: 'ADD_PANEL', pageId: page.id })}
+                actionLabel="Add Frame"
+              />
             </div>
           ) : (
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
