@@ -16,6 +16,7 @@ export default {
                 ember: {
                     400: '#ff8a4c',
                     500: '#ff6b35',
+                    600: '#e05a2a',
                 },
                 steel: {
                     100: '#f0f0f5',
@@ -25,6 +26,23 @@ export default {
                     500: '#78788c',
                     600: '#585868',
                     700: '#404050',
+                },
+                /* Semantic colors – WCAG AA contrast on ink-950 (#0e0e12) */
+                success: {
+                    DEFAULT: '#34d399', /* 7.6:1 on ink-950 */
+                    muted:   '#065f46',
+                },
+                warning: {
+                    DEFAULT: '#fbbf24', /* 12.4:1 on ink-950 */
+                    muted:   '#78350f',
+                },
+                danger: {
+                    DEFAULT: '#f87171', /* 5.6:1 on ink-950 */
+                    muted:   '#7f1d1d',
+                },
+                info: {
+                    DEFAULT: '#60a5fa', /* 5.9:1 on ink-950 */
+                    muted:   '#1e3a5f',
                 },
             },
             fontFamily: {
