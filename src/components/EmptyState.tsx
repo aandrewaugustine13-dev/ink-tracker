@@ -214,8 +214,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 
     // Full-size variant for main content areas
     return (
-        <div className="flex flex-col items-center justify-center text-center animate-fade-in select-none">
-            <Illustration className={`mb-6 ${
+        <div className="flex flex-col items-center justify-center text-center animate-fade-in select-none py-12">
+            <Illustration className={`mb-8 ${
                 variant === 'panels' ? 'w-48 h-36' : 'w-36 h-28'
             } ${showGutters ? 'text-gray-400' : 'text-steel-600'}`} />
 
