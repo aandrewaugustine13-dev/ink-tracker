@@ -1292,9 +1292,9 @@ function ZoomableCanvas({
       }}
     >
     {!activePage || activePage.panels.length === 0 ? (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <p className={`font-mono text-sm tracking-wide ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>
-          To start your storyboard, click the <span className={`inline-flex items-center mx-1 px-1.5 py-0.5 rounded border ${showGutters ? 'border-gray-300 text-gray-500' : 'border-ink-700 text-steel-400'}`}>📁</span> folder icon in the top left corner.
+      <div className="sticky top-4 right-0 w-full flex justify-start pl-8 pointer-events-none" style={{ zIndex: 10 }}>
+        <p className={`font-mono text-sm tracking-wide pointer-events-auto ${showGutters ? 'text-gray-500' : 'text-white/50'}`}>
+          ← Click the 📁 in the sidebar to start storyboarding
         </p>
       </div>
     ) : (
