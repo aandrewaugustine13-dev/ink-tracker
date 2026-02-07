@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Action } from '../state/actions';
+import { BtnPrimary, BtnSecondary, InlineValidation } from './ui';
 
 interface NewProjectModalProps {
     onClose: () => void;
@@ -9,13 +10,14 @@ interface NewProjectModalProps {
 const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, dispatch }) => {
     const [projectTitle, setProjectTitle] = useState('');
     const [projectType, setProjectType] = useState<'comic' | 'screenplay' | 'stage-play' | 'tv-series'>('comic');
+    const [titleError, setTitleError] = useState<string | null>(null);
 
     const handleCreate = () => {
         if (!projectTitle.trim()) {
-            alert('Please enter a project title');
+            setTitleError('Project title is required');
             return;
         }
-        
+        setTitleError(null);
         dispatch({ type: 'ADD_PROJECT', title: projectTitle.trim(), projectType });
         onClose();
     };
@@ -32,7 +34,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, dispatch }) 
                     </div>
                     <button 
                         onClick={onClose} 
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-ink-800 hover:bg-red-500 text-steel-400 hover:text-white transition-all text-xl font-bold"
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-ink-800 hover:bg-danger text-steel-400 hover:text-white transition-all text-xl font-bold"
                     >
                         ×
                     </button>
@@ -40,24 +42,26 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, dispatch }) 
 
                 {/* Content */}
                 <div className="p-6 space-y-6">
-                    {/* Project Title Input */}
                     <div>
-                        <label className="block text-[10px] font-mono text-steel-400 uppercase tracking-widest mb-2">
+                        <label className="block text-[10px] font-mono text-steel-400 uppercase tracking-widest mb-2 font-bold">
                             Project Title
                         </label>
                         <input
                             type="text"
                             value={projectTitle}
-                            onChange={(e) => setProjectTitle(e.target.value)}
+                            onChange={(e) => { setProjectTitle(e.target.value); setTitleError(null); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
                             placeholder="Enter project title..."
-                            className="w-full bg-ink-950 border border-ink-700 rounded-lg px-4 py-3 text-sm text-steel-300 font-mono outline-none focus:border-ember-500 transition-colors"
+                            className={`w-full bg-ink-950 border rounded-lg px-4 py-3 text-sm text-steel-300 font-mono outline-none transition-colors ${
+                                titleError ? 'border-danger/60 focus:border-danger' : 'border-ink-700 focus:border-ember-500'
+                            }`}
                             autoFocus
                         />
+                        <InlineValidation message={titleError || ''} severity="error" show={!!titleError} />
                     </div>
 
-                    {/* Project Type Dropdown */}
                     <div>
-                        <label className="block text-[10px] font-mono text-steel-400 uppercase tracking-widest mb-2">
+                        <label className="block text-[10px] font-mono text-steel-400 uppercase tracking-widest mb-2 font-bold">
                             Project Type
                         </label>
                         <select
@@ -75,18 +79,8 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, dispatch }) 
 
                 {/* Footer */}
                 <div className="p-6 border-t border-ink-700 flex gap-3">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 bg-ink-800 hover:bg-ink-700 text-steel-400 hover:text-steel-300 font-bold py-3 rounded-lg uppercase text-xs transition-colors border border-ink-700"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleCreate}
-                        className="flex-1 bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold py-3 rounded-lg uppercase text-xs transition-colors"
-                    >
-                        Create
-                    </button>
+                    <BtnSecondary onClick={onClose} className="flex-1 py-3">Cancel</BtnSecondary>
+                    <BtnPrimary onClick={handleCreate} className="flex-1 py-3">Create</BtnPrimary>
                 </div>
             </div>
         </div>
