@@ -3,6 +3,7 @@ import { X, Plus, Edit2, Trash2, User, ChevronDown, ChevronUp, Save } from 'luci
 import { Character } from '../types';
 import { Action } from '../state/actions';
 import { genId } from '../utils/helpers';
+import EmptyState from './EmptyState';
 
 interface Props {
     characters: Character[];
@@ -220,9 +221,13 @@ export function CharacterBank({ characters, dispatch, onClose }: Props) {
 
                     {/* Character list */}
                     {characters.length === 0 && !isAdding ? (
-                        <p className="text-center text-steel-600 py-8 font-mono text-sm">
-                            No characters yet. Add your first character to get started.
-                        </p>
+                        <div className="py-4">
+                            <EmptyState
+                                variant="characters"
+                                onAction={handleStartAdd}
+                                actionLabel="Add First Character"
+                            />
+                        </div>
                     ) : (
                         <div className="space-y-2">
                             {characters.map(char => (
