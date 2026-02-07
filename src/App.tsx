@@ -45,6 +45,7 @@ import TextOverlay from './components/TextOverlay';
 import PresentMode from './components/PresentMode';
 import EmptyState from './components/EmptyState';
 import { BatchProgressIndicator, StatusBarIndicator } from './components/GenerationSpinner';
+import { ToastContainer, useToast } from './components/ui';
 import { SplitView } from './components/SplitView';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
@@ -191,6 +192,9 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
   const [showSplitView, setShowSplitView] = useState(false);
   
+  // Toast notification system
+  const { toasts, addToast, dismissToast } = useToast();
+
   // Generate All state
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [currentPanel, setCurrentPanel] = useState(0);
@@ -335,7 +339,7 @@ function AppContent() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Export failed: " + e);
+      addToast("Export failed: " + e, 'error');
     } finally {
       setExporting(false);
     }
@@ -372,7 +376,7 @@ function AppContent() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Export failed: " + e);
+      addToast('Export failed: ' + e, 'error');
     } finally {
       setExporting(false);
     }
@@ -437,10 +441,10 @@ function AppContent() {
       if (hasContent) {
         pdf.save(`Page_${activePage.number}.pdf`);
       } else {
-        alert('No images to export');
+        addToast('No images to export', 'warning');
       }
     } catch (e) {
-      alert("PDF export failed: " + e);
+      addToast('PDF export failed: ' + e, 'error');
     } finally {
       setExporting(false);
     }
@@ -504,10 +508,10 @@ function AppContent() {
       if (hasContent) {
         pdf.save(`${activeIssue.title.replace(/\s+/g, '_')}.pdf`);
       } else {
-        alert('No images to export');
+        addToast('No images to export', 'warning');
       }
     } catch (e) {
-      alert("PDF export failed: " + e);
+      addToast('PDF export failed: ' + e, 'error');
     } finally {
       setExporting(false);
     }
@@ -606,7 +610,7 @@ function AppContent() {
         await new Promise(r => setTimeout(r, GENERATION_DELAY_MS));
       }
     } catch (e: any) {
-      alert(`Batch Failed: ${e.message}`);
+      addToast('Batch failed: ' + e.message, 'error');
     } finally { setBatching(false); }
   };
 
@@ -619,7 +623,7 @@ function AppContent() {
     );
     
     if (panelsToGenerate.length === 0) {
-      alert('No panels to generate. All panels either have images or lack prompts.');
+      addToast('No panels to generate. All panels either have images or lack prompts.', 'warning');
       return;
     }
     
@@ -702,11 +706,13 @@ function AppContent() {
 
   return (
     <div className={`h-screen w-full flex overflow-hidden font-sans selection:bg-ember-500/30 ${showGutters ? 'bg-gray-200' : 'bg-ink-950'}`}>
+    <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     <Sidebar
     state={state}
     dispatch={dispatch}
     onOpenProjects={() => setProjectsOpen(true)}
     onOpenScriptImport={() => setShowScriptImport(true)}
+    onToast={addToast}
     />
 
     <TransformWrapper
