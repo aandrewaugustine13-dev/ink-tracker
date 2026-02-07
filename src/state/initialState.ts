@@ -58,6 +58,8 @@ export const normalizeProjects = (projects: Project[]): Project[] => {
             projectType: proj.projectType || 'comic',
             openaiApiKey: proj.openaiApiKey || '',
             fluxModel: proj.fluxModel || 'fal-ai/flux-pro',
+            panelFrameStyle: proj.panelFrameStyle || 'opaque-black',
+            textOverlayStyle: proj.textOverlayStyle || 'opaque',
             characters: proj.characters || [],
             issues: (proj.issues || []).map((iss) => ({
                 ...iss,

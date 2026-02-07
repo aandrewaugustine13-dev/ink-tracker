@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, X, Play, Pause } from 'lucide-react';
-import { Issue, Panel, TextElement, TextElementType } from '../types';
+import { Issue, Panel, TextElement, TextElementType, TextOverlayStyle } from '../types';
 import { getImage } from '../services/imageStorage';
 
 interface PresentModeProps {
   issue: Issue;
   onClose: () => void;
+  textOverlayStyle?: TextOverlayStyle;
 }
 
 /** Flat representation of a panel with its page context */
@@ -49,7 +50,7 @@ function getAllPanels(issue: Issue): FlatPanel[] {
  * - Auto-hiding control bar
  * - Keyboard: arrows navigate, space toggles auto-play, T toggles text, Escape exits
  */
-const PresentMode: React.FC<PresentModeProps> = ({ issue, onClose }) => {
+const PresentMode: React.FC<PresentModeProps> = ({ issue, onClose, textOverlayStyle = 'opaque' }) => {
   const allPanels = React.useMemo(() => getAllPanels(issue), [issue]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -278,7 +279,7 @@ const PresentMode: React.FC<PresentModeProps> = ({ issue, onClose }) => {
               panel.textElements.length > 0 && (
                 <div className="absolute inset-0 pointer-events-none">
                   {panel.textElements.map((te) => (
-                    <PresentTextElement key={te.id} element={te} />
+                    <PresentTextElement key={te.id} element={te} textOverlayStyle={textOverlayStyle} />
                   ))}
                 </div>
               )}
@@ -493,7 +494,7 @@ function PresentPanel({
 /**
  * Renders a text element (speech bubble, caption, etc.) in presentation mode.
  */
-function PresentTextElement({ element }: { element: TextElement }) {
+function PresentTextElement({ element, textOverlayStyle = 'opaque' }: { element: TextElement; textOverlayStyle?: TextOverlayStyle }) {
   const typeClasses: Record<TextElementType, string> = {
     dialogue: 'bubble-dialogue',
     thought: 'bubble-thought',
@@ -501,9 +502,13 @@ function PresentTextElement({ element }: { element: TextElement }) {
     phone: 'bubble-phone',
   };
 
+  const styleModifier = textOverlayStyle === 'semi-transparent' ? 'text-style-semi-transparent'
+    : textOverlayStyle === 'border-only' ? 'text-style-border-only'
+    : '';
+
   return (
     <div
-      className={`absolute ${typeClasses[element.type]} pointer-events-none`}
+      className={`absolute ${typeClasses[element.type]} ${styleModifier} pointer-events-none`}
       style={{
         left: `${element.x}%`,
         top: `${element.y}%`,
