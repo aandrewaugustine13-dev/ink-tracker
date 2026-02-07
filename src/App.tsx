@@ -1004,7 +1004,19 @@ function AppContent() {
         </button>
       );
     })()}
-    <button onClick={() => activePage && dispatch({ type: 'ADD_PANEL', pageId: activePage.id })} className={`font-display text-xl px-6 py-2 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
+    <button onClick={() => {
+      if (activePage) {
+        dispatch({ type: 'ADD_PANEL', pageId: activePage.id });
+      } else if (activeIssue && activeIssue.pages.length > 0) {
+        // activePage is stale - use first page of active issue
+        const fallbackPage = activeIssue.pages[0];
+        dispatch({ type: 'SET_ACTIVE_PAGE', id: fallbackPage.id });
+        dispatch({ type: 'ADD_PANEL', pageId: fallbackPage.id });
+      } else if (activeIssue) {
+        // No pages at all - create one first
+        dispatch({ type: 'ADD_PAGE', issueId: activeIssue.id });
+      }
+    }} className={`font-display text-xl px-6 py-2 tracking-widest transition-all rounded-full shadow-lg active:translate-y-1 ${showGutters ? 'bg-black text-white hover:bg-gray-800' : 'bg-ember-500 hover:bg-ember-400 text-ink-950'}`}>
     ADD FRAME
     </button>
     </div>
@@ -1280,17 +1292,10 @@ function ZoomableCanvas({
       }}
     >
     {!activePage || activePage.panels.length === 0 ? (
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <EmptyState
-          variant="panels"
-          showGutters={showGutters}
-          onAction={() => {
-            if (activePage) {
-              dispatch({ type: 'ADD_PANEL', pageId: activePage.id });
-            }
-          }}
-          actionLabel="Add First Frame"
-        />
+      <div className="absolute top-8 right-8">
+        <p className={`font-mono text-xs tracking-wide ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>
+          Click the 📁 in the sidebar to start storyboarding
+        </p>
       </div>
     ) : (
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
