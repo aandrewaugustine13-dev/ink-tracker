@@ -108,15 +108,10 @@ const VARIANT_CONFIG: Record<EmptyStateProps['variant'], VariantConfig> = {
     },
     panels: {
         illustration: IllustrationPanels,
-        title: 'A blank canvas, infinite possibilities',
-        description: 'This page is waiting for its first frame. Add a panel, describe the scene, and let the AI bring it to life.',
-        tips: [
-            'Click "Add Frame" to place your first panel',
-            'Use Templates for common layouts (2x2, 3x3, manga)',
-            'Drag panels to arrange them freely on the canvas',
-            'Write a scene description, then hit generate',
-        ],
-        actionDefault: 'Add First Frame',
+        title: 'Empty page',
+        description: 'Add a frame to get started.',
+        tips: [],
+        actionDefault: 'Add Frame',
     },
     characters: {
         illustration: IllustrationCharacters,
