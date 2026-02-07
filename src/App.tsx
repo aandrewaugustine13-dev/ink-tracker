@@ -43,6 +43,7 @@ import CharacterBank from './components/CharacterBank';
 import UserGuide from './components/UserGuide';
 import TextOverlay from './components/TextOverlay';
 import PresentMode from './components/PresentMode';
+import EmptyState from './components/EmptyState';
 import { SplitView } from './components/SplitView';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
@@ -1270,13 +1271,17 @@ function ZoomableCanvas({
       }}
     >
     {!activePage || activePage.panels.length === 0 ? (
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
-      <div className={`w-56 h-56 border-4 border-dashed rounded-[3rem] flex items-center justify-center opacity-40 group hover:opacity-100 transition-opacity ${showGutters ? 'border-gray-400' : 'border-ink-900'}`}>
-      <div className={`scale-[3] transition-colors ${showGutters ? 'text-gray-400 group-hover:text-black' : 'text-ink-800 group-hover:text-ember-500'}`}>
-      <Icons.Plus />
-      </div>
-      </div>
-      <p className={`font-display text-5xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Canvas Sterile</p>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <EmptyState
+          variant="panels"
+          showGutters={showGutters}
+          onAction={() => {
+            if (activePage) {
+              dispatch({ type: 'ADD_PANEL', pageId: activePage.id });
+            }
+          }}
+          actionLabel="Add First Frame"
+        />
       </div>
     ) : (
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
@@ -1384,8 +1389,13 @@ function SpreadCanvas({
           }}
         >
           {page.panels.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-800 gap-8 animate-fade-in">
-              <p className={`font-display text-3xl tracking-widest uppercase mb-2 text-center ${showGutters ? 'text-gray-400' : 'text-ink-800'}`}>Empty Page</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <EmptyState
+                variant="page-spread"
+                showGutters={showGutters}
+                onAction={() => dispatch({ type: 'ADD_PANEL', pageId: page.id })}
+                actionLabel="Add Frame"
+              />
             </div>
           ) : (
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={modifiers}>
