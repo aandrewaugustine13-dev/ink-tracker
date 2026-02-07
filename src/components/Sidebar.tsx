@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppState, PanelFrameStyle, TextOverlayStyle } from '../types';
 import { Action } from '../state/actions';
 import { ART_STYLES, Icons } from '../constants';
+import EmptyState from './EmptyState';
 import { generateImage as generateGeminiImage } from '../services/geminiService';
 import { generateLeonardoImage } from '../services/leonardoService';
 import { generateGrokImage } from '../services/grokService';
@@ -733,6 +734,18 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
 
                     {/* Issues list */}
                     <div className="space-y-4">
+                        {activeProject && activeProject.issues.length === 0 && (
+                            <EmptyState
+                                variant="issues"
+                                compact
+                                onAction={() => {
+                                    if (activeProject) {
+                                        dispatch({ type: 'ADD_ISSUE', projectId: activeProject.id });
+                                    }
+                                }}
+                                actionLabel={`Add ${typeLabel}`}
+                            />
+                        )}
                         {activeProject?.issues.map(iss => {
                             const isActive = state.activeIssueId === iss.id;
                             return (
@@ -852,7 +865,12 @@ const Sidebar: React.FC<SidebarProps> = ({ state, dispatch, onOpenProjects, onOp
                             </div>
                         ))}
                         {!activeProject?.characters.length && !showCharForm && (
-                            <p className="text-[10px] text-steel-700 italic text-center py-4 px-2 border border-dashed border-ink-700 rounded-lg">No cast members added yet.</p>
+                            <EmptyState
+                                variant="cast"
+                                compact
+                                onAction={() => setShowCharForm(true)}
+                                actionLabel="Add Character"
+                            />
                         )}
                     </div>
                 </div>
