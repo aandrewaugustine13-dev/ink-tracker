@@ -4,6 +4,7 @@ import { Action } from '../state/actions';
 import { Icons } from '../constants';
 import NewProjectModal from './NewProjectModal';
 import EmptyState from './EmptyState';
+import { InlineValidation } from './ui';
 
 interface ProjectHubProps {
     state: AppState;
@@ -20,6 +21,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
     const [localFalKey, setLocalFalKey] = useState<string>('');
     const [localSeaArtKey, setLocalSeaArtKey] = useState<string>('');
     const [localOpenAIKey, setLocalOpenAIKey] = useState<string>('');
+    const [keySavedFor, setKeySavedFor] = useState<string | null>(null);
 
     useEffect(() => {
         if (editingId) {
@@ -196,22 +198,22 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 onClick={() => {
                     if (proj.imageProvider === 'gemini' && localGeminiKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_GEMINI_KEY', projectId: proj.id, apiKey: localGeminiKey.trim() });
-                        alert('Gemini Key saved!');
+                        setKeySavedFor(proj.id);
                     } else if (proj.imageProvider === 'leonardo' && localLeonardoKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_LEONARDO_KEY', projectId: proj.id, apiKey: localLeonardoKey.trim() });
-                        alert('Leonardo Key saved!');
+                        setKeySavedFor(proj.id);
                     } else if (proj.imageProvider === 'grok' && localGrokKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_GROK_KEY', projectId: proj.id, apiKey: localGrokKey.trim() });
-                        alert('Grok Key saved!');
+                        setKeySavedFor(proj.id);
                     } else if (proj.imageProvider === 'fal' && localFalKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_FAL_KEY', projectId: proj.id, apiKey: localFalKey.trim() });
-                        alert('FAL Key saved!');
+                        setKeySavedFor(proj.id);
                     } else if (proj.imageProvider === 'seaart' && localSeaArtKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_SEAART_KEY', projectId: proj.id, apiKey: localSeaArtKey.trim() });
-                        alert('SeaArt Key saved!');
+                        setKeySavedFor(proj.id);
                     } else if (proj.imageProvider === 'openai' && localOpenAIKey.trim()) {
                         dispatch({ type: 'UPDATE_PROJECT_OPENAI_KEY', projectId: proj.id, apiKey: localOpenAIKey.trim() });
-                        alert('OpenAI Key saved!');
+                        setKeySavedFor(proj.id);
                     }
                 }}
                 className="bg-ember-500 hover:bg-ember-400 text-ink-950 font-bold px-4 py-2 rounded-lg uppercase text-[9px] transition-colors"
@@ -219,6 +221,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({ state, dispatch, onClose }) => 
                 Save
                 </button>
                 </div>
+                <InlineValidation message="API key saved successfully" severity="success" show={keySavedFor === proj.id} />
                 {proj.imageProvider === 'gemini' ? (
                     <a 
                         href="https://aistudio.google.com/app/apikey" 
