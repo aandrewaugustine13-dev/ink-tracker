@@ -17,35 +17,12 @@ export const createInitialState = (): AppState => {
         }
     }
 
-    const defaultProject: Project = {
-        id: 'p1',
-        title: 'New Story',
-        style: 'classic-noir',
-        issueType: 'issue',
-        imageProvider: 'gemini',
-        projectType: 'comic',
-        fluxModel: 'fal-ai/flux-pro',
-        characters: [],
-        issues: [
-            {
-                id: 'i1',
-                title: 'Issue #1',
-                pages: [
-                    {
-                        id: 'pg1',
-                        number: 1,
-                        panels: []
-                    }
-                ]
-            }
-        ]
-    };
-
+    // Don't create a default project - onboarding will handle this
     return {
-        projects: [defaultProject],
-        activeProjectId: 'p1',
-        activeIssueId: 'i1',
-        activePageId: 'pg1'
+        projects: [],
+        activeProjectId: null,
+        activeIssueId: null,
+        activePageId: null
     };
 };
 
