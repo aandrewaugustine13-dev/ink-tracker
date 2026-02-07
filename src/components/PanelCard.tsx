@@ -8,6 +8,7 @@ import { getImage, saveImage } from '../services/imageStorage';
 import { genId } from '../utils/helpers';
 import TextOverlay from './TextOverlay';
 import { PanelGenerationOverlay } from './GenerationSpinner';
+import { InlineValidation } from './ui';
 
 // Import all generation services
 import { generateImage as generateGeminiImage } from '../services/geminiService';
@@ -219,11 +220,14 @@ const PanelCard: React.FC<PanelCardProps> = ({
     }, [isResizing]);
 
     // Generate image for this panel
+    const [genError, setGenError] = useState<string | null>(null);
+
     const handleGenerateImage = async () => {
         if (!panel.prompt?.trim() && panel.characterIds.length === 0) {
-            alert('Please enter a prompt or select characters first.');
+            setGenError('Add a scene description or select characters first');
             return;
         }
+        setGenError(null);
 
         setIsGenerating(true);
         
@@ -282,7 +286,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
             }
         } catch (err: any) {
             console.error('Image generation failed:', err);
-            alert(`Generation failed: ${err.message}`);
+            setGenError(`Generation failed: ${err.message}`);
         } finally {
             setIsGenerating(false);
         }
@@ -322,13 +326,13 @@ const PanelCard: React.FC<PanelCardProps> = ({
         
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+            setGenError('Please select an image file (PNG, JPG, etc.)');
             return;
         }
         
         // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
-            alert('Image must be less than 10MB');
+            setGenError('Image must be less than 10MB');
             return;
         }
         
@@ -344,7 +348,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
             reader.readAsDataURL(file);
         } catch (err: any) {
             console.error('Image upload failed:', err);
-            alert('Failed to upload image');
+            setGenError('Failed to upload image');
         }
         
         // Reset input
@@ -865,6 +869,13 @@ const PanelCard: React.FC<PanelCardProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Inline error display */}
+            {genError && (
+                <div className="px-3">
+                    <InlineValidation message={genError} severity="error" />
+                </div>
+            )}
 
             {/* Generate button footer */}
             <div className={`px-3 py-2 border-t ${
