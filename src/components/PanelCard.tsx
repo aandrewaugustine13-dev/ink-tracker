@@ -441,7 +441,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                 </div>
 
                 {/* Image preview or placeholder */}
-                <div className={`relative rounded-t-xl overflow-hidden ${aspectConfig?.class || 'aspect-video'} ${
+                <div className={`relative overflow-hidden ${aspectConfig?.class || 'aspect-video'} ${
                     showGutters ? 'bg-gray-100 border-b border-gray-200' : 'bg-ink-950 border-b border-ink-800'
                 }`}>
 
@@ -634,7 +634,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                         </button>
                         <div 
                             className={`transition-all duration-200 ${
-                                expandedSections.generation ? 'max-h-[600px] overflow-y-auto' : 'max-h-0 overflow-hidden'
+                                expandedSections.generation ? 'max-h-[800px] overflow-y-auto' : 'max-h-0 overflow-hidden'
                             }`}
                         >
                             <div className="p-4 space-y-3">
@@ -663,7 +663,7 @@ const PanelCard: React.FC<PanelCardProps> = ({
                                                 e.stopPropagation();
                                                 setShowPromptHistory(!showPromptHistory);
                                             }}
-                                            className={`absolute right-2 top-8 p-1 rounded transition-colors ${
+                                            className={`absolute right-2 bottom-2 p-1 rounded transition-colors ${
                                                 showGutters 
                                                     ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
                                                     : 'bg-ink-800 text-steel-500 hover:bg-ink-700'
@@ -1169,6 +1169,8 @@ const PanelCard: React.FC<PanelCardProps> = ({
                     borderBottomRightRadius: '0.75rem',
                     clipPath: 'polygon(100% 0, 100% 100%, 0 100%)'
                 }}
+                title="Resize panel"
+                aria-label="Resize panel"
             />
         </div>
     );
