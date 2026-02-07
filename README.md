@@ -16,19 +16,19 @@ Stop describing panels in scripts that artists can't visualize. Generate rough s
 
 ## The Problem
 
-You've written a 22-page script. Panel descriptions, dialogue, camera angles—it's all there. You send it to your artist and they come back with questions:
+You've written a 22-page script. Panel descriptions, dialogue, camera angles—it’s all there. You send it to your artist and they come back with questions:
 
 > "What does 'medium shot' mean here?"  
 > "Is this a vertical or horizontal panel?"  
 > "What does Maya actually look like?"
 
-Comic scripts are blueprints written in words for a visual medium. That gap between what you see in your head and what ends up on the page? That's where projects stall, miscommunications happen, and creative intent gets lost.
+Comic scripts are blueprints written in words for a visual medium. That gap between what you see in your head and what ends up on the page? That’s where projects stall, miscommunications happen, and creative intent gets lost.
 
 ## The Solution
 
 Ink Tracker bridges that gap. Write your panel descriptions, select your characters, pick an art style, and generate visual storyboards with AI. Not final art—rough layouts that communicate composition, mood, and pacing.
 
-**For writers:** See your script before an artist touches it. Catch pacing issues. Realize that splash page doesn't work on page 3.
+**For writers:** See your script before an artist touches it. Catch pacing issues. Realize that splash page doesn’t work on page 3.
 
 **For solo creators:** Storyboard your entire issue in an afternoon. Export to PDF or CBZ. Use AI art as placeholders or finish the panels yourself.
 
@@ -61,16 +61,19 @@ Paste your script and Ink Tracker parses it into pages, panels, and dialogue. Su
 Add dialogue bubbles, thought clouds, captions, and phone screens directly on panel images. Drag to position, adjust tail direction, change font size. Basic lettering without leaving the app.
 
 ### 📤 Export Options
-- **ZIP** — All panel images from a page
-- **CBZ** — Full issue as a comic book archive (opens in any comic reader)
+- **ZIP** — All panel images from a page  
+- **CBZ** — Full issue as a comic book archive (opens in any comic reader)  
 - **PDF** — Single page or full issue, print-ready
 
+### 🎬 Presentation Mode
+Walk through your issue panel by panel in fullscreen. Arrow keys, spacebar, or click to navigate. Use it to check pacing, review visual flow, or present your storyboards to collaborators.
+
 ### 🎛️ Multiple AI Providers
-Bring your own API key from:
-- Google Gemini
-- Leonardo.ai
-- FAL (Flux models)
-- Grok (xAI)
+Bring your own API key from:  
+- Google Gemini  
+- Leonardo.ai  
+- FAL (Flux models)  
+- Grok (xAI)  
 - SeaArt
 
 Switch providers per project. Use the fast/cheap one for rough layouts, the good one for hero shots.
@@ -82,11 +85,12 @@ Switch providers per project. Use the fast/cheap one for rough layouts, the good
 ### Use it now (no install)
 **[→ ink-tracker-tau.vercel.app](https://ink-tracker-tau.vercel.app)**
 
-1. Open the Archive (folder icon) → Create a project
-2. Add an Issue/Chapter → Add a Page
-3. Set your image provider and API key in the sidebar
-4. Pick an art style
-5. Click **ADD FRAME** → Write a prompt → Hit **Generate**
+1. Open the Archive (folder icon) → Create a project  
+2. Add an Issue/Chapter → Add a Page  
+3. Set your image provider and API key in the sidebar  
+4. Pick an art style  
+5. Click **ADD FRAME** → Write a prompt → Hit **Generate**  
+6. Once you have panels generated, click **PRESENT** in the toolbar to enter presentation mode — a fullscreen slideshow walkthrough of your panels with arrow key/spacebar navigation.
 
 ### Run locally
 
@@ -111,6 +115,8 @@ Open `http://localhost:5173`
 | `Delete` | Remove selected panel |
 | `Escape` | Exit selection or presentation mode |
 | `Space` | Advance slide (in presentation mode) |
+
+**In Presentation Mode:** Arrow keys and Space to advance, Escape to exit.
 
 ---
 
@@ -168,17 +174,17 @@ ink-tracker/
 
 ## Why I Built This
 
-I'm working on a 35-issue graphic novel. Writing scripts is one thing—visualizing 700+ pages of panels is another. I needed a way to see my story before committing to final art, to catch pacing problems early, and to communicate with collaborators without writing novels about what each panel should look like.
+I’m working on a 35-issue graphic novel. Writing scripts is one thing—visualizing 700+ pages of panels is another. I needed a way to see my story before committing to final art, to catch pacing problems early, and to communicate with collaborators without writing novels about what each panel should look like.
 
 Existing tools were either too simple (mood boards), too complex (full illustration software), or too expensive (production storyboarding tools). So I built this.
 
-If you're making comics, graphic novels, webtoons, or any kind of sequential visual story—this is for you.
+If you’re making comics, graphic novels, webtoons, or any kind of sequential visual story—this is for you.
 
 ---
 
 ## Contributing
 
-PRs welcome. If you're adding a feature, open an issue first so we can discuss.
+PRs welcome. If you’re adding a feature, open an issue first so we can discuss.
 
 ```bash
 # Fork the repo, then:
