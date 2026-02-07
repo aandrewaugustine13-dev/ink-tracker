@@ -1,4 +1,3 @@
-App · TSX
 import React, { useState, useReducer, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   DndContext,
