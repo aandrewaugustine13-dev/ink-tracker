@@ -95,7 +95,7 @@ function parsePageNumber(str: string): number {
 const PAGE_PATTERNS = [
     /^#{1,3}\s*PAGE\s+(\w+)/i,       // Matches: ### PAGE 14, ## PAGE FOURTEEN
     /^\*\*PAGE\s+(\w+)\*\*/i,         // Matches: **PAGE 14**
-    /^(?:PAGE|PG)\s+(\w+)/i,          // Matches: PAGE 14, PG 14
+    /^(?:PAGE|PG)\s+(\w+)(?:\s*$|\s*\()/i,  // Matches: PAGE 14, PAGE FOURTEEN, PAGE 14 (note), PG 14 (etc.)
 ];
 
 // FIXED: Simplified PANEL patterns
