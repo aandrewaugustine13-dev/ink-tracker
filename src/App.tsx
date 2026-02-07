@@ -1293,8 +1293,8 @@ function ZoomableCanvas({
     >
     {!activePage || activePage.panels.length === 0 ? (
       <div className="absolute top-8 right-8">
-        <p className={`font-mono text-xs tracking-wide ${showGutters ? 'text-gray-400' : 'text-steel-600'}`}>
-          Click the 📁 in the sidebar to start storyboarding
+        <p className={`font-mono text-sm tracking-wide ${showGutters ? 'text-gray-500' : 'text-steel-300'}`}>
+          ← Click the 📁 in the sidebar to start storyboarding
         </p>
       </div>
     ) : (
