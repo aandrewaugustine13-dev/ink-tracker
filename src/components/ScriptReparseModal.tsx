@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { parseScript, ParseResult } from '../services/scriptParser';
 import { Issue, Page, Panel } from '../types';
 import { X } from 'lucide-react';
+import { InlineValidation } from './ui';
 
 interface Props {
     issue: Issue;
@@ -29,17 +30,19 @@ export function ScriptReparseModal({ issue, onClose, onApplyChanges }: Props) {
     const [diffs, setDiffs] = useState<PanelDiff[]>([]);
     const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
     const [reparsing, setReparsing] = useState(false);
+    const [parseError, setParseError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!issue.scriptText) return;
         
         setReparsing(true);
+        setParseError(null);
         
         // Re-parse the script
         const result = parseScript(issue.scriptText);
         
         if (!result.success) {
-            alert('Failed to re-parse script: ' + result.errors.join(', '));
+            setParseError('Failed to re-parse script: ' + result.errors.join(', '));
             setReparsing(false);
             return;
         }
@@ -221,6 +224,10 @@ export function ScriptReparseModal({ issue, onClose, onApplyChanges }: Props) {
                                     <span className="text-xs font-mono text-steel-600">Building diff view...</span>
                                 </div>
                             </div>
+                        </div>
+                    ) : parseError ? (
+                        <div className="py-8 px-4">
+                            <InlineValidation message={parseError} severity="error" />
                         </div>
                     ) : diffs.length === 0 ? (
                         <div className="text-center py-12 text-steel-400">
