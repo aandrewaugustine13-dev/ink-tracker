@@ -108,4 +108,76 @@ describe('scriptParser - page number parsing', () => {
     expect(result.pages.find(p => p.pageNumber === 20)).toBeTruthy();
     expect(result.pages.find(p => p.pageNumber === 21)).toBeTruthy();
   });
+
+  it('parses the last page correctly when script ends without trailing content', () => {
+    // Test that the final page is saved even if it's the last thing in the script
+    const script = `PAGE 1\nPanel 1\nFirst page\n\nPAGE 2\nPanel 1\nSecond page\n\nPAGE 20\nPanel 1\nLast page content`;
+    const result = parseScript(script);
+    expect(result.success).toBe(true);
+    expect(result.pages.length).toBe(3);
+    
+    // Verify the last page (20) is included
+    const lastPage = result.pages.find(p => p.pageNumber === 20);
+    expect(lastPage).toBeTruthy();
+    expect(lastPage!.panels.length).toBe(1);
+    expect(lastPage!.panels[0].description).toContain('Last page');
+  });
+
+  it('parses the last page with multiple panels', () => {
+    const script = `PAGE 1
+Panel 1
+First page
+
+PAGE 20
+Panel 1
+Last page, first panel
+
+Panel 2
+Last page, second panel
+
+Panel 3
+Last page, third panel`;
+    const result = parseScript(script);
+    expect(result.success).toBe(true);
+    expect(result.pages.length).toBe(2);
+    
+    const lastPage = result.pages.find(p => p.pageNumber === 20);
+    expect(lastPage).toBeTruthy();
+    expect(lastPage!.panels.length).toBe(3);
+    expect(lastPage!.panels[0].panelNumber).toBe(1);
+    expect(lastPage!.panels[1].panelNumber).toBe(2);
+    expect(lastPage!.panels[2].panelNumber).toBe(3);
+  });
+
+  it('handles last page with no panels gracefully', () => {
+    // Edge case: page marker with no panels (should be skipped)
+    const script = `PAGE 1\nPanel 1\nFirst page\n\nPAGE 2\nPanel 1\nSecond page\n\nPAGE 3`;
+    const result = parseScript(script);
+    expect(result.success).toBe(true);
+    // Page 3 should not be included since it has no panels
+    expect(result.pages.length).toBe(2);
+    expect(result.pages.find(p => p.pageNumber === 1)).toBeTruthy();
+    expect(result.pages.find(p => p.pageNumber === 2)).toBeTruthy();
+    expect(result.pages.find(p => p.pageNumber === 3)).toBeFalsy();
+  });
+
+  it('handles last page that ends with empty lines', () => {
+    const script = `PAGE 1
+Panel 1
+First page
+
+PAGE 20
+Panel 1
+Last page content
+
+
+`;
+    const result = parseScript(script);
+    expect(result.success).toBe(true);
+    expect(result.pages.length).toBe(2);
+    
+    const lastPage = result.pages.find(p => p.pageNumber === 20);
+    expect(lastPage).toBeTruthy();
+    expect(lastPage!.panels.length).toBe(1);
+  });
 });
