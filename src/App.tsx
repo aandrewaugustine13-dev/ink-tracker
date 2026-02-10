@@ -15,7 +15,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, Users, Sparkles, Loader2, BookOpen } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, Users, Sparkles, Loader2, BookOpen, Keyboard } from 'lucide-react';
 
 import {
   Page,
@@ -50,6 +50,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncIndicator } from './components/SyncIndicator';
 import { useImageGeneration } from './hooks/useImageGeneration';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 
 import { generateImage as generateGeminiImage } from './services/geminiService';
 import { generateLeonardoImage } from './services/leonardoService';
@@ -190,6 +191,7 @@ function AppContent() {
   const [showCharacterBank, setShowCharacterBank] = useState(false);
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
   const [showSplitView, setShowSplitView] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   
   // Generate All state
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
@@ -209,6 +211,20 @@ function AppContent() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle shortcuts when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
+      // Check for '?' key to toggle shortcuts modal
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+        return;
+      }
+      
+      // Check for Escape to close shortcuts modal
+      if (e.key === 'Escape' && showShortcuts) {
+        e.preventDefault();
+        setShowShortcuts(false);
         return;
       }
 
@@ -265,7 +281,7 @@ function AppContent() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stateWithHistory, activePage, selectedPanelId, showReadThrough]);
+  }, [stateWithHistory, activePage, selectedPanelId, showReadThrough, showShortcuts]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -989,6 +1005,15 @@ function AppContent() {
       <Users size={16} />
       CHARACTERS
     </button>
+    {/* Keyboard Shortcuts */}
+    <button
+      onClick={() => setShowShortcuts(true)}
+      className={`font-mono text-xs px-4 py-2 tracking-widest transition-all rounded-full border flex items-center gap-2 active:scale-95 shadow-lg ${showGutters ? 'bg-white border-black text-black hover:bg-gray-100' : 'bg-ink-800 border-ink-700 text-steel-200 hover:bg-ink-700'}`}
+      title="Keyboard shortcuts reference"
+    >
+      <Keyboard size={16} />
+      SHORTCUTS
+    </button>
     {/* Read-through Mode */}
     {(() => {
       const totalIssuePanels = activeIssue?.pages.reduce((sum, p) => sum + p.panels.length, 0) || 0;
@@ -1211,6 +1236,12 @@ function AppContent() {
         onClose={() => setShowCharacterBank(false)} 
       />
     )}
+    
+    {/* Keyboard Shortcuts Modal */}
+    <KeyboardShortcutsModal 
+      isOpen={showShortcuts}
+      onClose={() => setShowShortcuts(false)}
+    />
     
     {/* Side-by-side Script Panel */}
     {showScriptPanel && activeIssue?.scriptText && (
