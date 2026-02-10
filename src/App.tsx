@@ -15,7 +15,7 @@ import {
 } from 'react-zoom-pan-pinch';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, Users, Sparkles, Loader2, BookOpen } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid2X2, Grid3X3, Columns, Square, RectangleHorizontal, FileImage, FileText, Play, X, ChevronLeft, ChevronRight, Users, Sparkles, Loader2, BookOpen, HelpCircle } from 'lucide-react';
 
 import {
   Page,
@@ -34,6 +34,7 @@ import { getImage, saveImage } from './services/imageStorage';
 import { ART_STYLES, Icons, ASPECT_CONFIGS, GENERATION_DELAY_MS } from './constants';
 import { ScriptImportModal } from './components/ScriptImportModal';
 import { ParseResult } from './services/scriptParser';
+import OnboardingModal from './components/OnboardingModal';
 
 import Sidebar from './components/Sidebar';
 import PanelCard from './components/PanelCard';
@@ -190,6 +191,7 @@ function AppContent() {
   const [showCharacterBank, setShowCharacterBank] = useState(false);
   const [activeTab, setActiveTab] = useState<'canvas' | 'guide'>('canvas');
   const [showSplitView, setShowSplitView] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Generate All state
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
@@ -266,6 +268,23 @@ function AppContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stateWithHistory, activePage, selectedPanelId, showReadThrough]);
+
+  // Check if onboarding should be shown
+  useEffect(() => {
+    const onboardingCompleted = localStorage.getItem('ink_tracker_onboarding_completed');
+    if (!onboardingCompleted && state.projects.length === 0) {
+      setShowOnboarding(true);
+    }
+  }, [state.projects.length]);
+
+  // Listen for custom event to open script import from onboarding
+  useEffect(() => {
+    const handleOpenScriptImport = () => {
+      setShowScriptImport(true);
+    };
+    window.addEventListener('openScriptImport', handleOpenScriptImport);
+    return () => window.removeEventListener('openScriptImport', handleOpenScriptImport);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -989,6 +1008,14 @@ function AppContent() {
       <Users size={16} />
       CHARACTERS
     </button>
+    {/* Help Button */}
+    <button
+      onClick={() => setShowOnboarding(true)}
+      className={`w-10 h-10 flex items-center justify-center rounded-full transition-all shadow-lg active:scale-95 ${showGutters ? 'bg-white border border-black text-black hover:bg-gray-100' : 'bg-ink-800 text-steel-200 hover:bg-ink-700'}`}
+      title="Show onboarding tutorial"
+    >
+      <HelpCircle size={20} />
+    </button>
     {/* Read-through Mode */}
     {(() => {
       const totalIssuePanels = activeIssue?.pages.reduce((sum, p) => sum + p.panels.length, 0) || 0;
@@ -1209,6 +1236,13 @@ function AppContent() {
         characters={activeProject.characters} 
         dispatch={dispatch} 
         onClose={() => setShowCharacterBank(false)} 
+      />
+    )}
+    {showOnboarding && (
+      <OnboardingModal
+        onClose={() => setShowOnboarding(false)}
+        dispatch={dispatch}
+        state={state}
       />
     )}
     
